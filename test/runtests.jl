@@ -2,6 +2,7 @@ using TVESim
 using Test
 using Random
 using JuMP
+using LinearAlgebra
 
 const RNG_SEED = 42
 
@@ -28,5 +29,9 @@ end
     m, n, l = 100, 123, 78
     A, A_val = get_matrix_pair(rng, model, m, n)
     B, B_val = get_matrix_pair(rng, model, n, l)
-    @test value.(A * B) ≈ A_val * B_val
+    @test value.(A * B) ≈ A_val * B_val 
+
+    n = 100
+    A, A_val = get_matrix_pair(rng, model, n, n)
+    @test value(tr(A)) ≈ tr(A_val)
 end

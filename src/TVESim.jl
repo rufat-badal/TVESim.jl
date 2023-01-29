@@ -1,7 +1,8 @@
 module TVESim
 
 import JuMP
-import Base.*, Base.-, Base.+
+import Base
+import LinearAlgebra
 
 include("linalg_for_nlexpr.jl")
 
