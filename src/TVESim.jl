@@ -1,7 +1,7 @@
 module TVESim
 
 import JuMP
-import Base.*
+import Base.*, Base.-, Base.+
 
 include("linalg_for_nlexpr.jl")
 
