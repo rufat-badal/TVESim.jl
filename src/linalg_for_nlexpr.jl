@@ -1,4 +1,4 @@
-function Base.:*(scalar::Number, A::Matrix{JuMP.NonlinearExpression})
+function *(scalar::Number, A::Matrix{JuMP.NonlinearExpression})
     m, n = size(A)
     model = A[1, 1].model
     A_scaled = Matrix{JuMP.NonlinearExpression}(undef, m, n)
@@ -10,7 +10,7 @@ function Base.:*(scalar::Number, A::Matrix{JuMP.NonlinearExpression})
     A_scaled
 end
 
-function Base.:-(A::Matrix{JuMP.NonlinearExpression})
+function -(A::Matrix{JuMP.NonlinearExpression})
     m, n = size(A)
     model = A[1, 1].model
     minus_A = Matrix{JuMP.NonlinearExpression}(undef, m, n)
@@ -27,7 +27,7 @@ function checksizematch(A, B)
     return size(A)
 end
 
-function Base.:+(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
+function +(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
     m, n = checksizematch(A, B)
     model = A[1, 1].model
     A_plus_B = Matrix{JuMP.NonlinearExpression}(undef, m, n)
@@ -39,7 +39,7 @@ function Base.:+(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearEx
     A_plus_B
 end
 
-function Base.:-(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
+function -(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
     m, n = checksizematch(A, B)
     model = A[1, 1].model
     A_minus_B = Matrix{JuMP.NonlinearExpression}(undef, m, n)
@@ -51,7 +51,7 @@ function Base.:-(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearEx
     A_minus_B
 end
 
-function Base.:*(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
+function *(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
     A_rows, A_cols = size(A)
     B_rows, B_cols = size(B)
     A_cols == B_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
@@ -72,7 +72,7 @@ function checksquare(A)
     return m
 end
 
-function LinearAlgebra.tr(A::Matrix{JuMP.NonlinearExpression})
+function tr(A::Matrix{JuMP.NonlinearExpression})
     n = checksquare(A)
     model = A[1, 1].model
     JuMP.@NLexpression(model, sum(A[i, i] for i in 1:n))
