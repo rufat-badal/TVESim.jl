@@ -21,4 +21,5 @@ const RNG_SEED = 42
     B = @NLexpression(model, [i = 1:m, j = 1:n], B_val[i, j])
 
     @test value.(A + B) ≈ A_val + B_val
+    @test value.(A - B) ≈ A_val - B_val
 end

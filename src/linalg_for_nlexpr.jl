@@ -38,3 +38,15 @@ function +(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpressi
     end
     A_plus_B
 end
+
+function -(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
+    m, n = checksizematch(A, B)
+    model = A[1, 1].model
+    A_minus_B = Matrix{JuMP.NonlinearExpression}(undef, m, n)
+    for j in 1:n
+        for i in 1:m
+            A_minus_B[i, j] = JuMP.@NLexpression(model, A[i, j] - B[i, j])
+        end
+    end
+    A_minus_B
+end
