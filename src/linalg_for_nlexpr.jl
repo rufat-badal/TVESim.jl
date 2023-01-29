@@ -50,3 +50,18 @@ function -(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpressi
     end
     A_minus_B
 end
+
+function *(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
+    A_rows, A_cols = size(A)
+    B_rows, B_cols = size(B)
+    A_cols == B_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
+    model = A[1, 1].model
+    A_times_B_rows, A_times_B_cols = A_rows, B_cols
+    A_times_B = Matrix{JuMP.NonlinearExpression}(undef, A_times_B_rows, A_times_B_cols)
+    for j in 1:A_times_B_cols
+        for i in 1:A_times_B_rows
+            A_times_B[i, j] = JuMP.@NLexpression(model, sum(A[i, k] * B[k, j] for k in 1:A_cols))
+        end
+    end
+    A_times_B
+end
