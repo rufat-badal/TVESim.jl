@@ -2,7 +2,7 @@ module TVESim
 
 import JuMP
 import Base: +, -, *
-import LinearAlgebra: tr
+import LinearAlgebra: tr, det
 
 include("linalg_for_nlexpr.jl")
 
