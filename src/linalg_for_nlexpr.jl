@@ -1,22 +1,32 @@
 # Avoid type piracy
 struct NLExprMatrix
     model::JuMP.Model
-    internal_matrix::Matrix{JuMP.NonlinearExpression}
+    M::Matrix{JuMP.NonlinearExpression}
 end
 
-function *(scalar::Number, A::Matrix{JuMP.NonlinearExpression})
+function value(A::NLExprMatrix)
+    value.(A.M)
+end
+
+function *(scalar::Number, A::NLExprMatrix)
+    model = A.model
+    A = A.M
+
     m, n = size(A)
-    model = A[1, 1].model
     A_scaled = Matrix{JuMP.NonlinearExpression}(undef, m, n)
     for j in 1:n
         for i in 1:m
             A_scaled[i, j] = JuMP.@NLexpression(model, scalar * A[i, j])
         end
     end
-    A_scaled
+
+    NLExprMatrix(model, A_scaled)
 end
 
-function -(A::Matrix{JuMP.NonlinearExpression})
+function -(A::NLExprMatrix)
+    model = A.model
+    A = A.M
+
     m, n = size(A)
     model = A[1, 1].model
     minus_A = Matrix{JuMP.NonlinearExpression}(undef, m, n)
@@ -25,7 +35,8 @@ function -(A::Matrix{JuMP.NonlinearExpression})
             minus_A[i, j] = JuMP.@NLexpression(model, -A[i, j])
         end
     end
-    minus_A
+
+    NLExprMatrix(model, minus_A)
 end
 
 function checksizematch(A, B)
@@ -33,19 +44,31 @@ function checksizematch(A, B)
     return size(A)
 end
 
-function +(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
+function +(A::NLExprMatrix, B::NLExprMatrix)
+    A.model == B.model || throw(ArgumentError("matrices from two different models cannot be summed"))
+
+    model = A.model
+    A = A.M
+    B = B.M
+
     m, n = checksizematch(A, B)
-    model = A[1, 1].model
     A_plus_B = Matrix{JuMP.NonlinearExpression}(undef, m, n)
     for j in 1:n
         for i in 1:m
             A_plus_B[i, j] = JuMP.@NLexpression(model, A[i, j] + B[i, j])
         end
     end
-    A_plus_B
+
+    NLExprMatrix(model, A_plus_B)
 end
 
-function -(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
+function -(A::NLExprMatrix, B::NLExprMatrix)
+    A.model == B.model || throw(ArgumentError("matrices from two different models cannot be summed"))
+
+    model = A.model
+    A = A.M
+    B = B.M
+
     m, n = checksizematch(A, B)
     model = A[1, 1].model
     A_minus_B = Matrix{JuMP.NonlinearExpression}(undef, m, n)
@@ -54,10 +77,17 @@ function -(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpressi
             A_minus_B[i, j] = JuMP.@NLexpression(model, A[i, j] - B[i, j])
         end
     end
-    A_minus_B
+
+    NLExprMatrix(model, A_minus_B)
 end
 
-function *(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpression})
+function *(A::NLExprMatrix, B::NLExprMatrix)
+    A.model == B.model || throw(ArgumentError("matrices from two different models cannot be multiplied"))
+
+    model = A.model
+    A = A.M
+    B = B.M
+
     A_rows, A_cols = size(A)
     B_rows, B_cols = size(B)
     A_cols == B_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
@@ -69,7 +99,8 @@ function *(A::Matrix{JuMP.NonlinearExpression}, B::Matrix{JuMP.NonlinearExpressi
             A_times_B[i, j] = JuMP.@NLexpression(model, sum(A[i, k] * B[k, j] for k in 1:A_cols))
         end
     end
-    A_times_B
+
+    NLExprMatrix(model, A_times_B)
 end
 
 function checksquare(A)
@@ -80,14 +111,14 @@ end
 
 function tr(A::NLExprMatrix)
     model = A.model
-    A = A.internal_matrix
+    A = A.M
     n = checksquare(A)
     JuMP.@NLexpression(model, sum(A[i, i] for i in 1:n))
 end
 
 function det(A::NLExprMatrix)
     model = A.model
-    A = A.internal_matrix
+    A = A.M
 
     n = checksquare(A)
 
@@ -97,22 +128,22 @@ function det(A::NLExprMatrix)
         return JuMP.@NLexpression(model, A[1, 1] * A[2, 2] - A[2, 1] * A[1, 2])
     end
 
-    minor_internal_matrix = Matrix{JuMP.NonlinearExpression}(undef, (n - 1, n - 1))
+    minor_M = Matrix{JuMP.NonlinearExpression}(undef, (n - 1, n - 1))
     det_A = JuMP.@NLexpression(model, 0.0)
 
     for A_col in 1:n
         for minor_col in 1:A_col-1
             for minor_row in 1:n-1
-                minor_internal_matrix[minor_row, minor_col] = A[minor_row+1, minor_col]
+                minor_M[minor_row, minor_col] = A[minor_row+1, minor_col]
             end
         end
         for minor_col in A_col:n-1
             for minor_row in 1:n-1
-                minor_internal_matrix[minor_row, minor_col] = A[minor_row+1, minor_col+1]
+                minor_M[minor_row, minor_col] = A[minor_row+1, minor_col+1]
             end
         end
 
-        minor = NLExprMatrix(model, minor_internal_matrix)
+        minor = NLExprMatrix(model, minor_M)
         det_minor = det(minor)
 
         if isodd(A_col)
