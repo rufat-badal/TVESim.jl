@@ -1,3 +1,9 @@
+# Avoid type piracy
+struct NLExprMatrix
+    model::JuMP.Model
+    internal_matrix::Matrix{JuMP.NonlinearExpression}
+end
+
 function *(scalar::Number, A::Matrix{JuMP.NonlinearExpression})
     m, n = size(A)
     model = A[1, 1].model
@@ -72,15 +78,18 @@ function checksquare(A)
     return m
 end
 
-function tr(A::Matrix{JuMP.NonlinearExpression})
+function tr(A::NLExprMatrix)
+    model = A.model
+    A = A.internal_matrix
     n = checksquare(A)
-    model = A[1, 1].model
     JuMP.@NLexpression(model, sum(A[i, i] for i in 1:n))
 end
 
-function det(A::Matrix{JuMP.NonlinearExpression})
+function det(A::NLExprMatrix)
+    model = A.model
+    A = A.internal_matrix
+
     n = checksquare(A)
-    model = A[1, 1].model
 
     if n == 1
         return A[1, 1]
@@ -88,21 +97,24 @@ function det(A::Matrix{JuMP.NonlinearExpression})
         return JuMP.@NLexpression(model, A[1, 1] * A[2, 2] - A[2, 1] * A[1, 2])
     end
 
-    minor = Matrix{JuMP.NonlinearExpression}(undef, (n - 1, n - 1))
+    minor_internal_matrix = Matrix{JuMP.NonlinearExpression}(undef, (n - 1, n - 1))
     det_A = JuMP.@NLexpression(model, 0.0)
 
     for A_col in 1:n
         for minor_col in 1:A_col-1
             for minor_row in 1:n-1
-                minor[minor_row, minor_col] = A[minor_row+1, minor_col]
+                minor_internal_matrix[minor_row, minor_col] = A[minor_row+1, minor_col]
             end
         end
         for minor_col in A_col:n-1
             for minor_row in 1:n-1
-                minor[minor_row, minor_col] = A[minor_row+1, minor_col+1]
+                minor_internal_matrix[minor_row, minor_col] = A[minor_row+1, minor_col+1]
             end
         end
+
+        minor = NLExprMatrix(model, minor_internal_matrix)
         det_minor = det(minor)
+
         if isodd(A_col)
             det_A = JuMP.@NLexpression(model, det_A + A[1, A_col] * det_minor)
         else

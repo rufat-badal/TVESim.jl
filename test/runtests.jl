@@ -33,9 +33,11 @@ end
 
     n = 100
     A, A_val = get_matrix_pair(rng, model, n, n)
+    A = TVESim.NLExprMatrix(A[1, 1].model, A)
     @test value(tr(A)) ≈ tr(A_val)
 
     n = 7
     A, A_val = get_matrix_pair(rng, model, n, n)
+    A = TVESim.NLExprMatrix(A[1, 1].model, A)
     @test value(det(A)) ≈ det(A_val)
 end
