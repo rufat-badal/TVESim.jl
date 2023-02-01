@@ -21,6 +21,7 @@ end
     A, A_val = get_matrix_pair(rng, model, m, n)
     @test value(scalar * A) ≈ scalar * A_val
     @test value(-A) ≈ -A_val
+    @test value(transpose(A)) ≈ transpose(A_val)
 
     B, B_val = get_matrix_pair(rng, model, m, n)
     @test value(A + B) ≈ A_val + B_val

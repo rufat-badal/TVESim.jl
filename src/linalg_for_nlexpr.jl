@@ -155,3 +155,18 @@ function det(A::NLExprMatrix)
 
     det_A
 end
+
+function transpose(A::NLExprMatrix)
+    model = A.model
+    A = A.M
+
+    m, n = size(A)
+    A_transposed = Matrix{JuMP.NonlinearExpression}(undef, (n, m))
+    for j in 1:m
+        for i in 1:n
+            A_transposed[i, j] = A[j, i]
+        end
+    end
+
+    NLExprMatrix(model, A_transposed)
+end
