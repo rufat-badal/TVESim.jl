@@ -3,8 +3,9 @@ struct Grid
     triangles::Set{Set{Int}}
     dirichlet_vertices::Set{Int}
     neumann_vertices::Set{Int}
+    x0::Vector{Float64}
 
-    function Grid(n, triangles, dirichlet_vertices, neumann_vertices)
+    function Grid(n, triangles, dirichlet_vertices, neumann_vertices, x0)
         for t in triangles
             length(t) == 3 || throw(ArgumentError("triangles must contain exactly three vertices (provided triangle with $(length(t)) provided)"))
             for i in t
@@ -20,8 +21,8 @@ struct Grid
         end
         isempty(not_covered_vertices) || throw(ArgumentError("vertices $not_covered_vertices not covered by triangles"))
 
-        new(n, triangles, dirichlet_vertices, neumann_vertices)      
+        length(x0) == n || throw(ArgumentError("x0 must have length $n (vector of length $(length(x0)) was provided)"))
+
+        new(n, triangles, dirichlet_vertices, neumann_vertices, x0)
     end
 end
-
-grid = Grid(4, Set([Set([1, 2, 3]), Set([2, 3, 4])]), Set([1, 2]), Set([3, 4]))
