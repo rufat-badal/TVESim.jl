@@ -1,38 +1,45 @@
-struct Grid
-    num_vertices::Int
-    num_dirichlet_vertices::Int
-    neumann_vertices::Set{Int}
-    triangles::Set{Set{Int}}
-    x0::Vector{Float64}
+@enum VertexType external boundary internal
 
-    function Grid(num_vertices, num_dirichlet_vertices, neumann_vertices, triangles, x0)
-        num_dirichlet_vertices <= num_vertices || throw(ArgumentError("the number of dirichlet vertices cannot be larger than the total number of vertices"))
-        vertices = Set(1:num_vertices)
-        neumann_vertices ⊆ vertices || throw(ArgumentError("neumann_vertices must be a subset of all vertices"))
-        dirichlet_vertices = Set(1:num_dirichlet_vertices)
-        isempty(neumann_vertices ∩ dirichlet_vertices) || throw(ArgumentError("vertex cannot be both in dirichlet_vertices and neumann_vertices")) 
-
-        for t in triangles
-            length(t) == 3 || throw(ArgumentError("triangles must contain exactly three vertices"))
-            t ⊆ vertices || throw(ArgumentError("invalid triangle indices"))
-        end
-
-        not_covered_vertices = Set(1:num_vertices)
-        for t in triangles
-            setdiff!(not_covered_vertices, t)
-        end
-        not_covered_string = ""
-        for i in not_covered_vertices
-            not_covered_string *= ", $i"
-        end
-        not_covered_string = not_covered_string[3:end]
-
-        isempty(not_covered_vertices) || throw(ArgumentError("vertices {$not_covered_string} not covered by triangles"))
-
-        length(x0) == num_vertices || throw(ArgumentError("x0 must have length $num_vertices (vector of length $(length(x0)) was provided)"))
-
-        new(num_vertices, num_dirichlet_vertices, neumann_vertices, triangles, x0)
-    end
+struct Point
+    x::Float64
+    y::Float64
 end
 
-Grid(4, 2, Set([3, 4]), Set([Set([1, 2, 3]), Set([2, 3, 4])]), ones(5))
+struct Triangle
+    a::Point
+    b::Point
+    c::Point
+end
+
+struct IsoscelesRightTriangulation
+    width::Float64
+    height::Float64
+    vertices::Matrix{Point}
+    triangles::Vector{Triangle}
+
+    function IsoscelesRightTriangulation(width::Float64, height::Float64)
+        num_squares_hor = ceil(Int, width)
+        num_squares_ver = ceil(Int, height)
+        num_vertices_hor = num_squares_hor + 1
+        num_vertices_ver = num_squares_ver + 1
+        vertices = Matrix{Point}(undef, num_vertices_hor, num_vertices_ver)
+        for i in 1:num_vertices_hor
+            for j in 1:num_vertices_ver
+                vertices[i, j] = Point(i - 1, j - 1)
+            end
+        end
+
+        num_triangles = 2 * num_squares_hor * num_squares_ver
+        triangles = Vector{Triangle}(undef, num_triangles)
+        k = 1
+        for i in 1:num_squares_hor
+            for j in 1:num_squares_ver
+                triangles[k] = Triangle(vertices[i, j], vertices[i+1, j], vertices[i+1, j+1])
+                triangles[k+1] = Triangle(vertices[i, j], vertices[i, j+1], vertices[i+1, j+1])
+                k += 2
+            end
+        end
+
+        new(width, height, vertices)
+    end
+end
