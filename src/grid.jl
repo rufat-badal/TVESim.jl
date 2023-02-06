@@ -40,6 +40,14 @@ struct IsoscelesRightTriangulation
             end
         end
 
-        new(width, height, vertices)
+        new(width, height, vertices, triangles)
     end
 end
+
+function Base.iterate(T::IsoscelesRightTriangulation, state=1)
+    state > length(T.triangles) ? nothing : (T.triangles[state], state + 1)
+end
+
+Base.eltype(::Type{IsoscelesRightTriangulation}) = Triangle
+
+Base.length(T::IsoscelesRightTriangulation) = length(T.triangles)
