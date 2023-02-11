@@ -119,6 +119,19 @@ function update_vertex_type(v::Vertex, containing_triangle_isinternal::Bool)
 end
 
 function plot(grid::SimulationGrid, temp_range)
+    plot_width = 1000 # in pixels!
+    fontsize = 20
+    min_x, max_x = minimum(grid.x), maximum(grid.x)
+    min_y, max_y = minimum(grid.y), maximum(grid.y)
+    width = max_x - min_x
+    height = max_y - min_y
+    aspect = width / height
+    plot_height = plot_width / aspect
+    fig = CairoMakie.Figure(resolution=(plot_width, plot_height), fontsize=fontsize)
+    ax = CairoMakie.Axis(fig[1, 1], limits=(min_x, max_x, min_y, max_y), aspect=aspect)
+    CairoMakie.hidedecorations!(ax)
+    CairoMakie.hidespines!(ax)
+
     vertices = [grid.x grid.y]
     faces = Matrix{Int}(undef, length(grid.triangles), 3)
     for (i, T) in enumerate(grid.triangles)
@@ -126,10 +139,14 @@ function plot(grid::SimulationGrid, temp_range)
             faces[i, j] = vertex
         end
     end
-    CairoMakie.mesh(vertices, faces, color=grid.θ, colormap=:plasma, colorrange=temp_range, shading=false)
+
+    CairoMakie.mesh!(
+        vertices, faces, color=grid.θ,
+        colormap=:plasma, colorrange=temp_range, shading=false)
+    fig
 end
 
-radius = 3.0
+radius = 20.0
 dirichlet_arc_angle = pi / 4
 width = 2 * radius
 height = 2 * radius
