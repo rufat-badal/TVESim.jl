@@ -84,6 +84,18 @@ function SimulationGrid(width, height, triangulation, isinternal, isdirichlet)
             push!(internal_triangles, T)
         end
     end
+
+    # vertices are grouped as follows: dirichlet, neumann, internal
+    vertices = Vector{Vertex}()
+    append!(vertices, dirichlet_vertices)
+    append!(vertices, neumann_vertices)
+    append!(vertices, internal_vertices)
+    x = [v.x for v in vertices]
+    y = [v.y for v in vertices]
+    vertex_to_id = Dict(v => i for (i, v) in enumerate(vertices))
+    triangles = [(vertex_to_id[T[1]], vertex_to_id[T[2]], vertex_to_id[T[3]]) for T in internal_triangles]
+
+    SimulationGrid(length(vertices), length(dirichlet_vertices), length(neumann_vertices), x, y, triangles)
 end
 
 function update_vertex_type(v::Vertex, containing_triangle_isinternal::Bool)
