@@ -1,3 +1,5 @@
+import CairoMakie
+
 @enum VertexType external boundary internal undetermined
 
 mutable struct Vertex
@@ -10,7 +12,7 @@ end
 
 Triangle = Tuple{Vertex,Vertex,Vertex}
 
-function isosceles_right_triangulation(width::Float64, height::Float64)::Vector{Triangle}
+function isosceles_right_triangulation(width::Float64, height::Float64)
     num_squares_hor = ceil(Int, width)
     num_squares_ver = ceil(Int, height)
     num_vertices_hor = num_squares_hor + 1
@@ -42,10 +44,11 @@ struct SimulationGrid
     num_neumann_vertices::Int
     x::Vector{Float64}
     y::Vector{Float64}
+    θ::Vector{Float64}
     triangles::Vector{Tuple{Int,Int,Int}}
 end
 
-function SimulationGrid(width, height, triangulation, isinternal, isdirichlet)
+function SimulationGrid(width, height, initial_temperature, triangulation, isinternal, isdirichlet)
     covering_triangulation = triangulation(width, height)
 
     vertex_isinternal(v::Vertex) = isinternal(v.x, v.y)
@@ -95,7 +98,9 @@ function SimulationGrid(width, height, triangulation, isinternal, isdirichlet)
     vertex_to_id = Dict(v => i for (i, v) in enumerate(vertices))
     triangles = [(vertex_to_id[T[1]], vertex_to_id[T[2]], vertex_to_id[T[3]]) for T in internal_triangles]
 
-    SimulationGrid(length(vertices), length(dirichlet_vertices), length(neumann_vertices), x, y, triangles)
+    θ = [initial_temperature for _ in vertices]
+
+    SimulationGrid(length(vertices), length(dirichlet_vertices), length(neumann_vertices), x, y, θ, triangles)
 end
 
 function update_vertex_type(v::Vertex, containing_triangle_isinternal::Bool)
@@ -113,6 +118,17 @@ function update_vertex_type(v::Vertex, containing_triangle_isinternal::Bool)
     end
 end
 
+function plot(grid::SimulationGrid, temp_range)
+    vertices = [grid.x grid.y]
+    faces = Matrix{Int}(undef, length(grid.triangles), 3)
+    for (i, T) in enumerate(grid.triangles)
+        for (j, vertex) in enumerate(T)
+            faces[i, j] = vertex
+        end
+    end
+    CairoMakie.mesh(vertices, faces, color=grid.θ, colormap=:plasma, colorrange=temp_range, shading=false)
+end
+
 radius = 3.0
 dirichlet_arc_angle = pi / 4
 width = 2 * radius
@@ -120,4 +136,5 @@ height = 2 * radius
 triangulation = isosceles_right_triangulation
 isinternal(x, y) = (x - radius)^2 + (y - radius)^2 <= radius^2
 isdirichlet(x, y) = x - radius <= -cos(dirichlet_arc_angle)
-SimulationGrid(width, height, triangulation, isinternal, isdirichlet)
+grid = SimulationGrid(width, height, 0.0, triangulation, isinternal, isdirichlet)
+plot(grid, (0.0, 1.0))
