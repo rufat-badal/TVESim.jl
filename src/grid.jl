@@ -47,13 +47,41 @@ end
 
 function SimulationGrid(width, height, triangulation, isinternal, isdirichlet)
     covering_triangulation = triangulation(width, height)
+
     vertex_isinternal(v::Vertex) = isinternal(v.x, v.y)
     triangle_isinternal(triangle::Triangle) = all(vertex_isinternal(v) for v in triangle)
-    # on the first pass determine if a vertex is internal, external, or on the boundary
+    vertex_isdirichlet(v::Vertex) = isdirichlet(v.x, v.y)
+
+    # determine if a vertex is internal, external, or on the boundary
     for T in covering_triangulation
         containing_triangle_isinternal = triangle_isinternal(T)
         for v in T
             update_vertex_type(v, containing_triangle_isinternal)
+        end
+    end
+
+    # group vertices by their type
+    internal_vertices = Set{Vertex}()
+    dirichlet_vertices = Set{Vertex}()
+    neumann_vertices = Set{Vertex}()
+    for T in covering_triangulation
+        for v in T
+            if v.type == internal
+                push!(internal_vertices, v)
+            elseif v.type == boundary
+                if vertex_isdirichlet(v)
+                    push!(dirichlet_vertices, v)
+                else
+                    push!(neumann_vertices, v)
+                end
+            end
+        end
+    end
+
+    internal_triangles = Vector{Triangle}()
+    for T in covering_triangulation
+        if triangle_isinternal(T)
+            push!(internal_triangles, T)
         end
     end
 end
@@ -73,7 +101,7 @@ function update_vertex_type(v::Vertex, containing_triangle_isinternal::Bool)
     end
 end
 
-radius = 2.0
+radius = 3.0
 dirichlet_arc_angle = pi / 4
 width = 2 * radius
 height = 2 * radius
