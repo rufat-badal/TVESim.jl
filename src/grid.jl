@@ -153,15 +153,24 @@ end
 
 function plot(grid::SimulationGrid, temp_range; show_edges=false)
     plot_width = 1000 # in pixels!
-    fontsize = 20
+    strokewidth = 1
+    padding_perc = 0.5
+
     min_x, max_x = minimum(grid.x), maximum(grid.x)
     min_y, max_y = minimum(grid.y), maximum(grid.y)
     width = max_x - min_x
     height = max_y - min_y
     aspect = width / height
     plot_height = plot_width / aspect
-    fig = CairoMakie.Figure(resolution=(plot_width, plot_height), fontsize=fontsize)
-    ax = CairoMakie.Axis(fig[1, 1], limits=(min_x, max_x, min_y, max_y), aspect=aspect)
+    fig = CairoMakie.Figure(resolution=(plot_width, plot_height))
+    horizontal_padding = padding_perc / 100 * width
+    vertical_padding = padding_perc / 100 * height
+    ax = CairoMakie.Axis(
+        fig[1, 1],
+        limits=(
+            min_x - horizontal_padding, max_x + vertical_padding,
+            min_y - horizontal_padding, max_y + horizontal_padding),
+        aspect=aspect)
     CairoMakie.hidedecorations!(ax)
     CairoMakie.hidespines!(ax)
 
@@ -176,7 +185,7 @@ function plot(grid::SimulationGrid, temp_range; show_edges=false)
     if show_edges
         CairoMakie.poly!(
             vertices, faces,
-            color=grid.θ, colormap=:plasma, colorrange=temp_range, strokewidth=1, shading=true)
+            color=grid.θ, colormap=:plasma, colorrange=temp_range, strokewidth=strokewidth, shading=true)
     else
         CairoMakie.mesh!(
             vertices, faces, color=grid.θ,
@@ -186,13 +195,72 @@ function plot(grid::SimulationGrid, temp_range; show_edges=false)
     fig
 end
 
+function plot(triangulation::Vector{Triangle})
+    plot_width = 1000
+    strokewidth = 1
+    padding_perc = 0.5
 
-radius = 10
+    vertices = Set{Vertex}()
+    for T in triangulation
+        for v in T
+            push!(vertices, v)
+        end
+    end
+
+    x = [v.x for v in vertices]
+    y = [v.y for v in vertices]
+    vertex_coords = [x y]
+
+    vertex_to_id = Dict(v => i for (i, v) in enumerate(vertices))
+    faces = Matrix{Int}(undef, length(triangulation), 3)
+    for (i, T) in enumerate(triangulation)
+        for (j, vertex) in enumerate(T)
+            faces[i, j] = vertex_to_id[vertex]
+        end
+    end
+
+    min_x, max_x = minimum(x), maximum(x)
+    min_y, max_y = minimum(y), maximum(y)
+    width = max_x - min_x
+    height = max_y - min_y
+    aspect = width / height
+    plot_height = plot_width / aspect
+    fig = CairoMakie.Figure(resolution=(plot_width, plot_height))
+    horizontal_padding = padding_perc / 100 * width
+    vertical_padding = padding_perc / 100 * height
+    ax = CairoMakie.Axis(
+        fig[1, 1],
+        limits=(
+            min_x - horizontal_padding, max_x + vertical_padding,
+            min_y - horizontal_padding, max_y + horizontal_padding),
+        aspect=aspect)
+    CairoMakie.hidedecorations!(ax)
+    CairoMakie.hidespines!(ax)
+    CairoMakie.poly!(vertex_coords, faces, color=:transparent, strokewidth=strokewidth, shading=true)
+
+    fig
+end
+
+function plot(triangulation::Vector{Triangle}, width, height)
+    fig = plot(triangulation)
+    CairoMakie.poly!(
+        CairoMakie.Point2f[(0, 0), (width, 0), (width, height), (0, height)],
+        color=:transparent, strokecolor=:blue, strokewidth=2)
+    fig
+end
+
+function plot(triangulation::Vector{Triangle}, side_length)
+    plot(triangulation, side_length, side_length)
+end
+
+
+radius = 20
 dirichlet_arc_angle = pi / 4
 width = 2 * radius
 height = 2 * radius
 triangulation = equilateral_triangulation
 isinternal(x, y) = (x - radius)^2 + (y - radius)^2 <= radius^2
 isdirichlet(x, y) = x - radius <= -cos(dirichlet_arc_angle)
-grid = SimulationGrid(width, height, 0.0, triangulation, isinternal, isdirichlet)
-plot(grid, (0.0, 1.0), show_edges=true)
+plot(triangulation(width, height), width, height)
+# grid = SimulationGrid(width, height, 0.0, triangulation, isinternal, isdirichlet)
+# plot(grid, (0.0, 1.0), show_edges=true)
