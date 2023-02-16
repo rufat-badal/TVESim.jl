@@ -137,7 +137,7 @@ function SimulationGrid(width, height, initial_temperature, triangulation, isint
 end
 
 function SimulationGrid(boundary_points, initial_temperature, isdirichlet)
-    min_angle = 30
+    min_angle = 10
 
     min_segment_length_sqrd = Inf
     for (p, q) in zip(eachcol(boundary_points[:, 1:end-1]), eachcol(boundary_points[:, 2:end]))
@@ -150,7 +150,7 @@ function SimulationGrid(boundary_points, initial_temperature, isdirichlet)
 
     num_initial_boundary_points = size(boundary_points, 2)
     triin = Triangulate.TriangulateIO()
-    triin.pointlist = circle_boundary_points(radius, num_initial_boundary_points)
+    triin.pointlist = boundary_points
     triin.segmentlist = [1:num_initial_boundary_points [2:num_initial_boundary_points...; 1]]'
     triout, _ = Triangulate.triangulate("pa$(max_area)q$(min_angle)Q", triin)
 
@@ -269,6 +269,11 @@ function plot(grid::SimulationGrid, temp_range; show_edges=false)
             colormap=:plasma, colorrange=temp_range)
     end
 
+    dirichlet_ids = 1:grid.num_dirichlet_vertices
+    CairoMakie.scatter!(grid.x[dirichlet_ids], grid.y[dirichlet_ids], color=:red)
+    neumann_ids = grid.num_dirichlet_vertices+1:grid.num_dirichlet_vertices+grid.num_neumann_vertices
+    CairoMakie.scatter!(grid.x[neumann_ids], grid.y[neumann_ids], color=:green)
+
     fig
 end
 
@@ -340,23 +345,28 @@ function circle_boundary_points(radius, num_points)
     [x y]'
 end
 
+function test_crystalline_simulationgrid(triangulation)
+    radius = 20
+    initial_temperature = 0
+    dirichlet_arc_angle = pi / 4
+    width = 2 * radius
+    height = 2 * radius
+    isinternal(x, y) = (x - radius)^2 + (y - radius)^2 <= radius^2
+    isdirichlet(x, y) = x - radius <= -radius * cos(dirichlet_arc_angle)
+    grid = SimulationGrid(width, height, initial_temperature, triangulation, isinternal, isdirichlet)
+    plot(grid, (0.0, 1.0), show_edges=true)
+end
 
-# radius = 20
-# dirichlet_arc_angle = pi / 4
-# width = 2 * radius
-# height = 2 * radius
-# triangulation = equilateral_triangulation
-# isinternal(x, y) = (x - radius)^2 + (y - radius)^2 <= radius^2
-# isdirichlet(x, y) = x - radius <= -cos(dirichlet_arc_angle)
-# plot(triangulation(width, height), width, height)
-# grid = SimulationGrid(width, height, 0.0, triangulation, isinternal, isdirichlet)
-# plot(grid, (0.0, 1.0), show_edges=true)
+function test_cdt_simulationgrid()
+    radius = 20
+    initial_temperature = 0.0
+    num_boundary_points = 100
+    dirichlet_arc_angle = 45
+    isdirichlet(x, y) = x - radius <= -radius * cos(dirichlet_arc_angle / 360 * 2pi)
+    grid = SimulationGrid(circle_boundary_points(radius, num_boundary_points), initial_temperature, isdirichlet)
+    plot(grid, (0.0, 1.0), show_edges=true)
+end
 
-
-radius = 10.0
-initial_temperature = 0.0
-num_boundary_points = 100
-dirichlet_arc_angle = 45
-isdirichlet(x, y) = x - radius <= -cos(dirichlet_arc_angle / 360 * 2pi)
-grid = SimulationGrid(circle_boundary_points(radius, num_boundary_points), initial_temperature, isdirichlet)
-plot(grid, (0.0, 1.0), show_edges=true)
+# test_crystalline_simulationgrid(isosceles_right_triangulation)
+# test_crystalline_simulationgrid(equilateral_triangulation)
+test_cdt_simulationgrid()
