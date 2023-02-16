@@ -1,6 +1,3 @@
-import CairoMakie
-import Triangulate
-
 @enum VertexType external boundary internal undetermined
 
 const triangle_side_length = 1.0
@@ -366,7 +363,3 @@ function test_cdt_simulationgrid()
     grid = SimulationGrid(circle_boundary_points(radius, num_boundary_points), initial_temperature, isdirichlet)
     plot(grid, (0.0, 1.0), show_edges=true)
 end
-
-# test_crystalline_simulationgrid(isosceles_right_triangulation)
-# test_crystalline_simulationgrid(equilateral_triangulation)
-test_cdt_simulationgrid()
