@@ -1,4 +1,5 @@
 import CairoMakie
+import Triangulate
 
 @enum VertexType external boundary internal undetermined
 
@@ -130,10 +131,86 @@ function SimulationGrid(width, height, initial_temperature, triangulation, isint
     y = [v.y for v in vertices]
     vertex_to_id = Dict(v => i for (i, v) in enumerate(vertices))
     triangles = [(vertex_to_id[T[1]], vertex_to_id[T[2]], vertex_to_id[T[3]]) for T in internal_triangles]
-
     θ = [initial_temperature for _ in vertices]
 
     SimulationGrid(length(vertices), length(dirichlet_vertices), length(neumann_vertices), x, y, θ, triangles)
+end
+
+function SimulationGrid(boundary_points, initial_temperature, isdirichlet)
+    min_angle = 30
+
+    min_segment_length_sqrd = Inf
+    for (p, q) in zip(eachcol(boundary_points[:, 1:end-1]), eachcol(boundary_points[:, 2:end]))
+        segment_length_sqrd = (p[1] - q[1])^2 + (p[2] - q[2])^2
+        if segment_length_sqrd < min_segment_length_sqrd
+            min_segment_length_sqrd = segment_length_sqrd
+        end
+    end
+    max_area = sqrt(3) / 4 * min_segment_length_sqrd # area of an equilateral triangle
+
+    num_initial_boundary_points = size(boundary_points, 2)
+    triin = Triangulate.TriangulateIO()
+    triin.pointlist = circle_boundary_points(radius, num_initial_boundary_points)
+    triin.segmentlist = [1:num_initial_boundary_points [2:num_initial_boundary_points...; 1]]'
+    triout, _ = Triangulate.triangulate("pa$(max_area)q$(min_angle)Q", triin)
+
+    points = triout.pointlist
+    markers = triout.pointmarkerlist
+    num_boundary_vertices = 0
+    num_dirichlet_vertices = 0
+    for (p, m) in zip(eachcol(points), markers)
+        if m == 0
+            continue
+        end
+
+        num_boundary_vertices += 1
+        x, y = p
+        if isdirichlet(x, y)
+            num_dirichlet_vertices += 1
+        end
+    end
+    vertex_new_id = Dict{Int,Int}()
+    dirichlet_points = Vector{Vector{Float64}}()
+    neumann_points = Vector{Vector{Float64}}()
+    internal_points = Vector{Vector{Float64}}()
+    next_dirichlet_id = 1
+    next_neumann_id = num_dirichlet_vertices + 1
+    next_internal_id = num_boundary_vertices + 1
+    for (i, (p, m)) in enumerate(zip(eachcol(points), markers))
+        if m == 1
+            x, y = p
+            if isdirichlet(x, y)
+                push!(dirichlet_points, p)
+                vertex_new_id[i] = next_dirichlet_id
+                next_dirichlet_id += 1
+            else
+                push!(neumann_points, p)
+                vertex_new_id[i] = next_neumann_id
+                next_neumann_id += 1
+            end
+        else
+            push!(internal_points, p)
+            vertex_new_id[i] = next_internal_id
+            next_internal_id += 1
+        end
+    end
+
+    x = [p[1] for p in dirichlet_points]
+    append!(x, [p[1] for p in neumann_points])
+    append!(x, [p[1] for p in internal_points])
+    y = [p[2] for p in dirichlet_points]
+    append!(y, [p[2] for p in neumann_points])
+    append!(y, [p[2] for p in internal_points])
+    θ = initial_temperature * ones(1:size(points, 2))
+    triangles = [
+        (vertex_new_id[i], vertex_new_id[j], vertex_new_id[k])
+        for (i, j, k) in eachcol(triout.trianglelist)
+    ]
+
+    SimulationGrid(
+        size(points, 2), num_dirichlet_vertices, num_boundary_vertices - num_dirichlet_vertices,
+        x, y, θ, triangles
+    )
 end
 
 function update_vertex_type(v::Vertex, containing_triangle_isinternal::Bool)
@@ -253,14 +330,33 @@ function plot(triangulation::Vector{Triangle}, side_length)
     plot(triangulation, side_length, side_length)
 end
 
+function circle_boundary_points(radius, num_points)
+    θ = range(0, 2π, length=num_points + 1)
+    x = radius * (1 .+ cos.(θ))
+    pop!(x)
+    y = radius * (1 .+ sin.(θ))
+    pop!(y)
 
-radius = 20
-dirichlet_arc_angle = pi / 4
-width = 2 * radius
-height = 2 * radius
-triangulation = equilateral_triangulation
-isinternal(x, y) = (x - radius)^2 + (y - radius)^2 <= radius^2
-isdirichlet(x, y) = x - radius <= -cos(dirichlet_arc_angle)
-plot(triangulation(width, height), width, height)
+    [x y]'
+end
+
+
+# radius = 20
+# dirichlet_arc_angle = pi / 4
+# width = 2 * radius
+# height = 2 * radius
+# triangulation = equilateral_triangulation
+# isinternal(x, y) = (x - radius)^2 + (y - radius)^2 <= radius^2
+# isdirichlet(x, y) = x - radius <= -cos(dirichlet_arc_angle)
+# plot(triangulation(width, height), width, height)
 # grid = SimulationGrid(width, height, 0.0, triangulation, isinternal, isdirichlet)
 # plot(grid, (0.0, 1.0), show_edges=true)
+
+
+radius = 10.0
+initial_temperature = 0.0
+num_boundary_points = 100
+dirichlet_arc_angle = 45
+isdirichlet(x, y) = x - radius <= -cos(dirichlet_arc_angle / 360 * 2pi)
+grid = SimulationGrid(circle_boundary_points(radius, num_boundary_points), initial_temperature, isdirichlet)
+plot(grid, (0.0, 1.0), show_edges=true)
