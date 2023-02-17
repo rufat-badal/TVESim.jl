@@ -2,16 +2,16 @@
 # Avoid type piracy
 struct NLExprMatrix
     model::JuMP.Model
-    M::Matrix{JuMP.NonlinearExpression}
+    _matrix::Matrix{JuMP.NonlinearExpression}
 end
 
 function value(A::NLExprMatrix)
-    value.(A.M)
+    value.(A._matrix)
 end
 
 function *(scalar::Number, A::NLExprMatrix)
     model = A.model
-    A = A.M
+    A = A._matrix
 
     m, n = size(A)
     A_scaled = Matrix{JuMP.NonlinearExpression}(undef, m, n)
@@ -26,7 +26,7 @@ end
 
 function -(A::NLExprMatrix)
     model = A.model
-    A = A.M
+    A = A._matrix
 
     m, n = size(A)
     model = A[1, 1].model
@@ -49,8 +49,8 @@ function +(A::NLExprMatrix, B::NLExprMatrix)
     A.model == B.model || throw(ArgumentError("matrices from two different models cannot be summed"))
 
     model = A.model
-    A = A.M
-    B = B.M
+    A = A._matrix
+    B = B._matrix
 
     m, n = checksizematch(A, B)
     A_plus_B = Matrix{JuMP.NonlinearExpression}(undef, m, n)
@@ -67,8 +67,8 @@ function -(A::NLExprMatrix, B::NLExprMatrix)
     A.model == B.model || throw(ArgumentError("matrices from two different models cannot be subtracted"))
 
     model = A.model
-    A = A.M
-    B = B.M
+    A = A._matrix
+    B = B._matrix
 
     m, n = checksizematch(A, B)
     model = A[1, 1].model
@@ -86,8 +86,8 @@ function *(A::NLExprMatrix, B::NLExprMatrix)
     A.model == B.model || throw(ArgumentError("matrices from two different models cannot be multiplied"))
 
     model = A.model
-    A = A.M
-    B = B.M
+    A = A._matrix
+    B = B._matrix
 
     A_rows, A_cols = size(A)
     B_rows, B_cols = size(B)
@@ -112,14 +112,14 @@ end
 
 function tr(A::NLExprMatrix)
     model = A.model
-    A = A.M
+    A = A._matrix
     n = checksquare(A)
     JuMP.@NLexpression(model, sum(A[i, i] for i in 1:n))
 end
 
 function det(A::NLExprMatrix)
     model = A.model
-    A = A.M
+    A = A._matrix
 
     n = checksquare(A)
 
@@ -159,7 +159,7 @@ end
 
 function transpose(A::NLExprMatrix)
     model = A.model
-    A = A.M
+    A = A._matrix
 
     m, n = size(A)
     A_transposed = Matrix{JuMP.NonlinearExpression}(undef, (n, m))
