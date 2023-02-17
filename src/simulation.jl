@@ -51,7 +51,16 @@ function create_mechanical_step(grid::SimulationGrid, search_rad)
     )
     JuMP.@constraint(m, fix_y[i=1:grid.num_dirichlet_vertices], y[i] == grid.y[i])
 
+    # compute symmetrized strain and strain-rate
+    triangle = [NLExprVector(m, [prev_x[i], prev_y[i]]) for i in grid.triangles[begin]]
+    display(gradient(triangle).M)
+
     m
+end
+
+function gradient(triangle)
+    a, b, c = triangle
+    [b - a c - a]
 end
 
 function create_thermal_step()

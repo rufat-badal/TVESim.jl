@@ -1,3 +1,4 @@
+# TODO: add display methods
 # Avoid type piracy
 struct NLExprMatrix
     model::JuMP.Model
@@ -40,7 +41,7 @@ function -(A::NLExprMatrix)
 end
 
 function checksizematch(A, B)
-    size(A) == size(B) || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
+    size(A) == size(B) || throw(DimensionMismatch("sizes do not match: dimensions are $(size(A)), $(size(B))"))
     return size(A)
 end
 
@@ -63,7 +64,7 @@ function +(A::NLExprMatrix, B::NLExprMatrix)
 end
 
 function -(A::NLExprMatrix, B::NLExprMatrix)
-    A.model == B.model || throw(ArgumentError("matrices from two different models cannot be summed"))
+    A.model == B.model || throw(ArgumentError("matrices from two different models cannot be subtracted"))
 
     model = A.model
     A = A.M
@@ -169,4 +170,57 @@ function transpose(A::NLExprMatrix)
     end
 
     NLExprMatrix(model, A_transposed)
+end
+
+struct NLExprVector
+    model::JuMP.Model
+    _vector::Vector{JuMP.NonlinearExpression}
+end
+
+function NLExprVector(model, v::Vector)
+    internal_vector = Vector{JuMP.NonlinearExpression}(undef, length(v))
+    for (i, x) in enumerate(v)
+        internal_vector[i] = JuMP.@NLexpression(model, x)
+    end
+
+    NLExprVector(model, internal_vector)
+end
+
+function -(v::NLExprVector, w::NLExprVector)
+    v.model == w.model || throw(ArgumentError("vectors from two different models cannot be summed"))
+    model = v.model
+    v = v._vector
+    w = w._vector
+    checksizematch(v, w)
+
+    v_minus_w = [JuMP.@NLexpression(model, x - y) for (x, y) in zip(v, w)]
+    NLExprVector(model, v_minus_w)
+end
+
+function +(v::NLExprVector, w::NLExprVector)
+    v.model == w.model || throw(ArgumentError("vectors from two different models cannot be subtracted"))
+    model = v.model
+    v = v._vector
+    w = w._vector
+    checksizematch(v, w)
+
+    v_plus_w = [JuMP.@NLexpression(model, x + y) for (x, y) in zip(v, w)]
+    NLExprVector(model, v_plus_w)
+end
+
+function -(v::NLExprVector)
+    model = v.model
+    v = v._vector
+
+    minus_v = [JuMP.@NLexpression(model, -x) for x in v]
+    NLExprVector(model, minus_v)
+end
+
+function Base.hcat(v::NLExprVector, w::NLExprVector)
+    v.model == w.model || throw(ArgumentError("vectors of different length cannot be concatenated: length are $(length(v)), $(length(w))"))
+    model = v.model
+    v = v._vector
+    w = w._vector
+
+    NLExprMatrix(model, [v w])
 end
