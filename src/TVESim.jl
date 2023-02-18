@@ -7,7 +7,7 @@ import JuMP
 import JuMP.value
 import MadNLP
 import Base
-import Base: +, -, *
+import Base: +, -, *, inv
 import LinearAlgebra: tr, det, transpose
 import CairoMakie
 import Triangulate

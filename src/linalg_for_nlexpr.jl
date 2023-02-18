@@ -9,7 +9,7 @@ function value(A::NLExprMatrix)
     value.(A._matrix)
 end
 
-function *(scalar::Number, A::NLExprMatrix)
+function *(scalar, A::NLExprMatrix)
     model = A.model
     A = A._matrix
 
@@ -120,7 +120,9 @@ end
 function det(A::NLExprMatrix)
     n = checksquare(A._matrix)
 
-    if n == 1
+    if n == 0
+        return JuMP.@NLexpression(A.model, 1.0)
+    elseif n == 1
         return A._matrix[1, 1]
     elseif n == 2
         # TODO: implement getindex
@@ -174,6 +176,31 @@ end
 
 function minor(A::NLExprMatrix, i, j)
     NLExprMatrix(A.model, minor(A._matrix, i, j))
+end
+
+function adjugate(A::NLExprMatrix)
+    # TODO implement size for NLExprMatrix
+    n = checksquare(A._matrix)
+    adj_A = Matrix{JuMP.NonlinearExpression}(undef, n, n)
+
+    for j in 1:n
+        for i in 1:n
+            if iseven(i + j)
+                adj_A[i, j] = det(minor(A, j, i))
+            else
+                det_minor_A = det(minor(A, j, i))
+                adj_A[i, j] = JuMP.@NLexpression(A.model, -det_minor_A)
+            end
+        end
+    end
+
+    NLExprMatrix(A.model, adj_A)
+end
+
+function inv(A::NLExprMatrix)
+    det_A = det(A)
+    det_A_inverse = JuMP.@NLexpression(A.model, 1 / det_A)
+    det_A_inverse * adjugate(A)
 end
 
 function transpose(A::NLExprMatrix)

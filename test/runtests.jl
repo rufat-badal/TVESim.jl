@@ -38,14 +38,6 @@ end
 
     n = 7
     A, A_val = get_matrix_pair(rng, model, n, n)
-    @test value(det(A)) ≈ det(A_val) 
+    @test value(det(A)) ≈ det(A_val)
+    @test value(A * TVESim.adjugate(A)) ≈ det(A_val) * Matrix(I, n, n)
 end
-
-# rng = MersenneTwister(RNG_SEED)
-# model = Model()
-# m, n = 4, 5
-# A_val = reshape(1:m*n, (m, n))
-# A = @NLexpression(model, [i = 1:m, j = 1:n], A_val[i, j])
-# A = TVESim.NLExprMatrix(model, A)
-# display(A._matrix)
-# TVESim.minor(A, 4, 5)._matrix
