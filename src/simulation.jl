@@ -53,7 +53,8 @@ function create_mechanical_step(grid::SimulationGrid, search_rad)
 
     # compute symmetrized strain and strain-rate
     triangle = [NLExprVector(m, [prev_x[i], prev_y[i]]) for i in grid.triangles[begin]]
-    display(gradient(triangle).M)
+    A = gradient(triangle)
+    display(A._matrix)
 
     m
 end

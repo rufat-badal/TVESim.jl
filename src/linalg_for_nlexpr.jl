@@ -118,43 +118,62 @@ function tr(A::NLExprMatrix)
 end
 
 function det(A::NLExprMatrix)
-    model = A.model
-    A = A._matrix
-
-    n = checksquare(A)
+    n = checksquare(A._matrix)
 
     if n == 1
-        return A[1, 1]
+        return A._matrix[1, 1]
     elseif n == 2
-        return JuMP.@NLexpression(model, A[1, 1] * A[2, 2] - A[2, 1] * A[1, 2])
+        # TODO: implement getindex
+        return JuMP.@NLexpression(A.model, A._matrix[1, 1] * A._matrix[2, 2] - A._matrix[2, 1] * A._matrix[1, 2])
     end
 
-    minor_M = Matrix{JuMP.NonlinearExpression}(undef, (n - 1, n - 1))
-    det_A = JuMP.@NLexpression(model, 0.0)
+    det_A = JuMP.@NLexpression(A.model, 0.0)
 
-    for A_col in 1:n
-        for minor_col in 1:A_col-1
-            for minor_row in 1:n-1
-                minor_M[minor_row, minor_col] = A[minor_row+1, minor_col]
-            end
-        end
-        for minor_col in A_col:n-1
-            for minor_row in 1:n-1
-                minor_M[minor_row, minor_col] = A[minor_row+1, minor_col+1]
-            end
-        end
+    for j in 1:n
+        det_minor = det(minor(A, 1, j))
 
-        minor = NLExprMatrix(model, minor_M)
-        det_minor = det(minor)
-
-        if isodd(A_col)
-            det_A = JuMP.@NLexpression(model, det_A + A[1, A_col] * det_minor)
+        if isodd(j)
+            det_A = JuMP.@NLexpression(A.model, det_A + A._matrix[1, j] * det_minor)
         else
-            det_A = JuMP.@NLexpression(model, det_A - A[1, A_col] * det_minor)
+            det_A = JuMP.@NLexpression(A.model, det_A - A._matrix[1, j] * det_minor)
         end
     end
 
     det_A
+end
+
+function minor(A::Matrix{JuMP.NonlinearExpression}, i, j)
+    m, n = size(A)
+
+    (1 <= i <= m && 1 <= j <= n) || throw(ArgumentError("minor indices not in the correct range, current values: ($i, $j)"))
+
+    minor_M = Matrix{JuMP.NonlinearExpression}(undef, (m - 1, n - 1))
+    if m == 1 || n == 1
+        return minor_M
+    end
+
+    for minor_col in 1:j-1
+        for minor_row in 1:i-1
+            minor_M[minor_row, minor_col] = A[minor_row, minor_col]
+        end
+        for minor_row in i:m-1
+            minor_M[minor_row, minor_col] = A[minor_row+1, minor_col]
+        end
+    end
+    for minor_col in j:n-1
+        for minor_row in 1:i-1
+            minor_M[minor_row, minor_col] = A[minor_row, minor_col+1]
+        end
+        for minor_row in i:m-1
+            minor_M[minor_row, minor_col] = A[minor_row+1, minor_col+1]
+        end
+    end
+
+    minor_M
+end
+
+function minor(A::NLExprMatrix, i, j)
+    NLExprMatrix(A.model, minor(A._matrix, i, j))
 end
 
 function transpose(A::NLExprMatrix)
