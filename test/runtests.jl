@@ -41,3 +41,10 @@ end
     @test value(det(A)) ≈ det(A_val)
     @test value(A * TVESim.adjugate(A)) ≈ det(A_val) * Matrix(I, n, n)
 end
+
+# rng = MersenneTwister(RNG_SEED)
+# model = Model()
+# n = 2
+# A, A_val = get_matrix_pair(rng, model, n, n)
+# display(A._matrix)
+# A[1, 2]
