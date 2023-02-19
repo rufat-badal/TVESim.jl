@@ -22,6 +22,14 @@ end
     @test value(scalar * A) ≈ scalar * A_val
     @test value(-A) ≈ -A_val
     @test value(transpose(A)) ≈ transpose(A_val)
+    # test getindex for NLExprMatrix
+    A_internal_matrix = Matrix{NonlinearExpression}(undef, m, n)
+    for j in 1:n
+        for i in 1:m
+            A_internal_matrix[i, j] = A[i, j]
+        end
+    end
+    @test A_internal_matrix == A._matrix
 
     B, B_val = get_matrix_pair(rng, model, m, n)
     @test value(A + B) ≈ A_val + B_val

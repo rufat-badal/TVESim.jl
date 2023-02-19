@@ -125,7 +125,6 @@ function det(A::NLExprMatrix)
     elseif n == 1
         return A[1, 1]
     elseif n == 2
-        # TODO: implement getindex
         return JuMP.@NLexpression(A.model, A[1, 1] * A[2, 2] - A[2, 1] * A[1, 2])
     end
 
