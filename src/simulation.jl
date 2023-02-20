@@ -53,15 +53,20 @@ function create_mechanical_step(grid::SimulationGrid, search_rad)
 
     # compute symmetrized strain and strain-rate
     triangle = [NLExprVector(m, [prev_x[i], prev_y[i]]) for i in grid.triangles[begin]]
-    A = gradient(triangle)
-    display(A._matrix)
+    reference_triangle = [[grid.x[i], grid.y[i]] for i in grid.triangles[begin]]
+    A = strain(triangle, reference_triangle)
+    display(value(A))
 
     m
 end
 
-function gradient(triangle)
+function strain(triangle, reference_triangle)
+    a, b, c = reference_triangle
+    gradient_equilateral_to_reference = [b - a c - a]
     a, b, c = triangle
-    [b - a c - a]
+    gradient_equilateral_to_current = [b - a c - a]
+
+    gradient_equilateral_to_current * inv(gradient_equilateral_to_reference)
 end
 
 function create_thermal_step()
