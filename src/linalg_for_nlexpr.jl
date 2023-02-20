@@ -108,14 +108,14 @@ function *(A::NLExprMatrix, B::NLExprMatrix)
     nlexpr_matrix_product(A, B, model)
 end
 
-function *(A::NLExprMatrix, B::Matrix{Number})
+function *(A::NLExprMatrix, B::Matrix)
     model = A.model
     A = A._matrix
 
     nlexpr_matrix_product(A, B, model)
 end
 
-function *(A::Matrix{Number}, B::NLExprMatrix)
+function *(A::Matrix, B::NLExprMatrix)
     model = B.model
     B = B._matrix
 
