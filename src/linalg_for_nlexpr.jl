@@ -82,18 +82,12 @@ function -(A::NLExprMatrix, B::NLExprMatrix)
     NLExprMatrix(model, A_minus_B)
 end
 
-function *(A::NLExprMatrix, B::NLExprMatrix)
-    A.model == B.model || throw(ArgumentError("matrices from two different models cannot be multiplied"))
-
-    model = A.model
-    A = A._matrix
-    B = B._matrix
-
+function nlexpr_matrix_product(A, B, model)
     A_rows, A_cols = size(A)
     B_rows, B_cols = size(B)
     A_cols == B_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
-    model = A[1, 1].model
     A_times_B_rows, A_times_B_cols = A_rows, B_cols
+
     A_times_B = Matrix{JuMP.NonlinearExpression}(undef, A_times_B_rows, A_times_B_cols)
     for j in 1:A_times_B_cols
         for i in 1:A_times_B_rows
@@ -102,6 +96,30 @@ function *(A::NLExprMatrix, B::NLExprMatrix)
     end
 
     NLExprMatrix(model, A_times_B)
+end
+
+function *(A::NLExprMatrix, B::NLExprMatrix)
+    A.model == B.model || throw(ArgumentError("matrices from two different models cannot be multiplied"))
+
+    model = A.model
+    A = A._matrix
+    B = B._matrix
+
+    nlexpr_matrix_product(A, B, model)
+end
+
+function *(A::NLExprMatrix, B::Matrix{Number})
+    model = A.model
+    A = A._matrix
+
+    nlexpr_matrix_product(A, B, model)
+end
+
+function *(A::Matrix{Number}, B::NLExprMatrix)
+    model = B.model
+    B = B._matrix
+
+    nlexpr_matrix_product(A, B, model)
 end
 
 function checksquare(A)
