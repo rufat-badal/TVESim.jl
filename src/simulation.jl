@@ -51,13 +51,36 @@ function create_mechanical_step(grid::SimulationGrid, search_rad)
     )
     JuMP.@constraint(m, fix_y[i=1:grid.num_dirichlet_vertices], y[i] == grid.y[i])
 
-    # compute symmetrized strain and strain-rate
-    triangle = [NLExprVector(m, [prev_x[i], prev_y[i]]) for i in grid.triangles[begin]]
-    reference_triangle = [[grid.x[i], grid.y[i]] for i in grid.triangles[begin]]
-    A = strain(triangle, reference_triangle)
-    display(value(A))
+    # compute strains and symmetrized strain-rates
+    prev_triangles = [[NLExprVector(m, [prev_x[i], prev_y[i]]) for i in T] for T in grid.triangles]
+    triangles = [[NLExprVector(m, [x[i], y[i]]) for i in T] for T in grid.triangles]
+    reference_triangles = [[[grid.x[i], grid.y[i]] for i in T] for T in grid.triangles]
+    prev_strains = strain.(zip(prev_triangles, reference_triangles))
+    strains = strain.(zip(triangles, reference_triangles))
+    strain_rates = [F - prev_F for (F, prev_F) in zip(strains, prev_strains)]
+    symmetrized_strain_rates = [
+        transpose(dot_F) * prev_F + transpose(prev_F) * dot_F
+        for (prev_F, dot_F) in zip(prev_strains, strain_rates)
+    ]
+    JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
+    JuMP.register(m, :integrate, 3, integrate; autodiff=true)
+    austenite_percentages = Vector{JuMP.NonlinearExpression}(undef, length(grid.triangles))
+    for (i, (i1, i2, i3)) in enumerate(grid.triangles)
+        austenite_percentages[i] = JuMP.@NLexpression(
+            m,
+            (austenite_percentage(prev_θ[i1]) + austenite_percentage(prev_θ[i2]) + austenite_percentage(prev_θ[i3])) / 3
+        )
+    end
 
     m
+end
+
+function integrate(f1, f2, f3)
+    (f1 + f2 + f3) / 3
+end
+
+function austenite_percentage(θ)
+    return 1 - 1 / (1 + θ)
 end
 
 function strain(triangle, reference_triangle)
@@ -67,6 +90,10 @@ function strain(triangle, reference_triangle)
     gradient_equilateral_to_current = [b - a c - a]
 
     gradient_equilateral_to_current * inv(gradient_equilateral_to_reference)
+end
+
+function strain((triangle, reference_triangle))
+    strain(triangle, reference_triangle)
 end
 
 function create_thermal_step()
