@@ -9,7 +9,7 @@ Base.@kwdef struct Simulation
     fps::Number = 30
     initial_temperature::Number = 0.0
     initial_scaling::Number = 1.0
-    shape_memory_scaling::Number = 2.0
+    shape_memory_scaling::Number
     temperature_search_radius::Number
     deformation_search_radius::Number
     heat_conductivity::Vector{Number} = [1.0, 1.0]
@@ -21,14 +21,14 @@ Base.@kwdef struct Simulation
     steps::Vector{SimulationStep}
 end
 
-function Simulation(grid::SimulationGrid, deformation_search_radius, temperature_search_radius)
-    mechanical_step = create_mechanical_step(grid, deformation_search_radius)
+function Simulation(grid::SimulationGrid, deformation_search_radius, temperature_search_radius, shape_memory_scaling=2.0)
+    mechanical_step = create_mechanical_step(grid, deformation_search_radius, shape_memory_scaling)
     thermal_step = create_thermal_step()
     steps = Vector{SimulationStep}()
-    Simulation(grid=grid, mechanical_step=mechanical_step, thermal_step=thermal_step, steps=steps, deformation_search_radius=deformation_search_radius, temperature_search_radius=temperature_search_radius)
+    Simulation(; grid, mechanical_step, thermal_step, steps, deformation_search_radius, temperature_search_radius, shape_memory_scaling)
 end
 
-function create_mechanical_step(grid::SimulationGrid, search_rad)
+function create_mechanical_step(grid::SimulationGrid, search_rad, shape_memory_scaling)
     m = JuMP.Model(() -> MadNLP.Optimizer(print_level=MadNLP.WARN, blas_num_threads=8))
 
     # previous steps
@@ -63,7 +63,6 @@ function create_mechanical_step(grid::SimulationGrid, search_rad)
         for (prev_F, dot_F) in zip(prev_strains, strain_rates)
     ]
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
-    JuMP.register(m, :integrate, 3, integrate; autodiff=true)
     austenite_percentages = Vector{JuMP.NonlinearExpression}(undef, length(grid.triangles))
     for (i, (i1, i2, i3)) in enumerate(grid.triangles)
         austenite_percentages[i] = JuMP.@NLexpression(
@@ -72,11 +71,29 @@ function create_mechanical_step(grid::SimulationGrid, search_rad)
         )
     end
 
+    # objective
+    scaling_matrix = [1/shape_memory_scaling 0; 0 1]
+    scaled_strains = [F * scaling_matrix for F in strains]
+    JuMP.@NLexpression(
+        m, elastic_energy,
+        0.5 * sum(
+            (1 - a_perc) * neo_hook_F_scaled + a_perc * neo_hook_F
+            for (F, a_perc, neo_hook_F, neo_hook_F_scaled) in zip(
+                strains,
+                austenite_percentages,
+                neo_hook.(strains),
+                neo_hook.(scaled_strains)
+            )
+        )
+    )
+
     m
 end
 
-function integrate(f1, f2, f3)
-    (f1 + f2 + f3) / 3
+function neo_hook(F::NLExprMatrix)
+    trace_C = tr(transpose(F) * F)
+    det_F = det(F)
+    JuMP.@NLexpression(F.model, trace_C - 2 - 2 * log(det_F) + (det_F - 1)^2)
 end
 
 function austenite_percentage(θ)
