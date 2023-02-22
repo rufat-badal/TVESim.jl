@@ -60,6 +60,46 @@ function Simulation(grid::SimulationGrid, deformation_search_radius, temperature
     steps = [SimulationStep(value.(mechanical_step.prev_x), value.(mechanical_step.prev_y), value.(mechanical_step.prev_θ))]
     simulation = Simulation(; grid, deformation_search_radius, temperature_search_radius, mechanical_step, steps)
     run_first_mechanical_step(simulation)
+    push!(steps, SimulationStep(value.(mechanical_step.x), value.(mechanical_step.y), value.(mechanical_step.prev_θ)))
+    plot(steps[end], grid.triangles)
+
+    # simulation
+end
+
+function plot(step::SimulationStep, triangles)
+    plot_width = 1000
+    strokewidth = 1
+    padding_perc = 0.5
+
+    x, y = step.x, step.y
+    vertex_coords = [x y]
+    faces = Matrix{Int}(undef, length(triangles), 3)
+    for (i, T) in enumerate(triangles)
+        for (j, v) in enumerate(T)
+            faces[i, j] = v
+        end
+    end
+
+    min_x, max_x = minimum(x), maximum(x)
+    min_y, max_y = minimum(y), maximum(y)
+    width = max_x - min_x
+    height = max_y - min_y
+    aspect = width / height
+    plot_height = plot_width / aspect
+    fig = CairoMakie.Figure(resolution=(plot_width, plot_height))
+    horizontal_padding = padding_perc / 100 * width
+    vertical_padding = padding_perc / 100 * height
+    ax = CairoMakie.Axis(
+        fig[1, 1],
+        limits=(
+            min_x - horizontal_padding, max_x + vertical_padding,
+            min_y - horizontal_padding, max_y + horizontal_padding),
+        aspect=aspect)
+    CairoMakie.hidedecorations!(ax)
+    CairoMakie.hidespines!(ax)
+    CairoMakie.poly!(vertex_coords, faces, color=:transparent, strokewidth=strokewidth, shading=true)
+
+    fig
 end
 
 function run_first_mechanical_step(simulation::Simulation)
@@ -132,7 +172,4 @@ function strain((triangle, reference_triangle))
     gradient_equilateral_to_current = [b - a c - a]
 
     gradient_equilateral_to_current * inv(gradient_equilateral_to_reference)
-end
-
-function init_thermal_step()
 end
