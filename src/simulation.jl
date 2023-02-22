@@ -52,13 +52,19 @@ Base.@kwdef struct Simulation
     entropic_heat_capacity::Number = 10.0
     external_temperature::Number = 0.0
     mechanical_step::MechanicalStep
-    steps::Vector{SimulationStep} = Vector{SimulationStep}()
+    steps::Vector{SimulationStep}
 end
 
 function Simulation(grid::SimulationGrid, deformation_search_radius, temperature_search_radius)
     mechanical_step = MechanicalStep(grid, deformation_search_radius)
-    simulation = Simulation(; grid, deformation_search_radius, temperature_search_radius, mechanical_step)
+    steps = [SimulationStep(value.(mechanical_step.prev_x), value.(mechanical_step.prev_y), value.(mechanical_step.prev_θ))]
+    simulation = Simulation(; grid, deformation_search_radius, temperature_search_radius, mechanical_step, steps)
+    run_first_mechanical_step(simulation)
+end
+
+function run_first_mechanical_step(simulation::Simulation)
     create_mechanical_step_objective(simulation)
+    JuMP.optimize!(simulation.mechanical_step.model)
 end
 
 function create_mechanical_step_objective(simulation::Simulation)
