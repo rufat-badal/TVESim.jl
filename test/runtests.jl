@@ -30,6 +30,7 @@ end
         end
     end
     @test A_internal_matrix == A._matrix
+    @test value(TVESim.norm_sqr(A)) ≈ sum(A_val .^ 2)
 
     B, B_val = get_matrix_pair(rng, model, m, n)
     @test value(A + B) ≈ A_val + B_val
@@ -52,7 +53,5 @@ end
 
 # rng = MersenneTwister(RNG_SEED)
 # model = Model()
-# n = 2
-# A, A_val = get_matrix_pair(rng, model, n, n)
-# display(A._matrix)
-# A[1, 2]
+# m, n = 100, 120
+# A, A_val = get_matrix_pair(rng, model, m, n)

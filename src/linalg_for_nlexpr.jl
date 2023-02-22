@@ -240,6 +240,10 @@ function transpose(A::NLExprMatrix)
     NLExprMatrix(model, A_transposed)
 end
 
+function norm_sqr(A::NLExprMatrix)
+    JuMP.@NLexpression(A.model, sum(a^2 for a in A._matrix))
+end
+
 struct NLExprVector
     model::JuMP.Model
     _vector::Vector{JuMP.NonlinearExpression}
