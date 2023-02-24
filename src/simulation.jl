@@ -46,7 +46,7 @@ Base.@kwdef struct Simulation
     fps::Number = 30
     initial_temperature::Number = 0.0
     initial_scaling::Number = 1.0
-    shape_memory_scaling::Number = 2.0
+    shape_memory_scaling::Number = 1.5
     heat_conductivity::Vector{Number} = [1.0, 1.0]
     heat_transfer_coefficient::Number = 0.5
     entropic_heat_capacity::Number = 10.0
@@ -95,8 +95,8 @@ function plot(step::SimulationStep, triangles)
             min_x - horizontal_padding, max_x + vertical_padding,
             min_y - horizontal_padding, max_y + horizontal_padding),
         aspect=aspect)
-    CairoMakie.hidedecorations!(ax)
-    CairoMakie.hidespines!(ax)
+    # CairoMakie.hidedecorations!(ax)
+    # CairoMakie.hidespines!(ax)
     CairoMakie.poly!(vertex_coords, faces, color=:transparent, strokewidth=strokewidth, shading=true)
 
     fig
@@ -142,7 +142,7 @@ function create_mechanical_step_objective(simulation::Simulation)
     JuMP.@NLexpression(
         m, elastic_energy,
         0.5 * sum(
-            (1 - a_perc) * neo_hook_F_scaled + a_perc * neo_hook_F
+            a_perc * neo_hook_F + (1 - a_perc) * neo_hook_F_scaled
             for (F, a_perc, neo_hook_F, neo_hook_F_scaled) in zip(
                 strains,
                 austenite_percentages,
@@ -152,7 +152,8 @@ function create_mechanical_step_objective(simulation::Simulation)
         )
     )
     JuMP.@NLexpression(m, dissipation, 0.5 * sum(d for d in norm_sqr.(symmetrized_strain_rates)))
-    JuMP.@NLobjective(m, Min, elastic_energy + simulation.fps * dissipation)
+    # JuMP.@NLobjective(m, Min, elastic_energy + self.fps * dissipation)
+    JuMP.@NLobjective(m, Min, elastic_energy)
 end
 
 function neo_hook(F::NLExprMatrix)
