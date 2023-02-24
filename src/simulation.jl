@@ -43,10 +43,10 @@ Base.@kwdef struct Simulation
     grid::SimulationGrid
     deformation_search_radius::Number
     temperature_search_radius::Number
-    fps::Number = 30
-    initial_temperature::Number = 0.0
+    shape_memory_scaling::Number
+    initial_temperature::Number
+    fps::Number = 1
     initial_scaling::Number = 1.0
-    shape_memory_scaling::Number = 1.5
     heat_conductivity::Vector{Number} = [1.0, 1.0]
     heat_transfer_coefficient::Number = 0.5
     entropic_heat_capacity::Number = 10.0
@@ -55,15 +55,20 @@ Base.@kwdef struct Simulation
     steps::Vector{SimulationStep}
 end
 
-function Simulation(grid::SimulationGrid, deformation_search_radius, temperature_search_radius)
+function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temperature=0)
+    width = maximum(grid.x) - minimum(grid.x)
+    height = maximum(grid.y) - minimum(grid.y)
+    deformation_search_radius = 1.1 * shape_memory_scaling * max(width, height)
+    temperature_search_radius = initial_temperature + 10
     mechanical_step = MechanicalStep(grid, deformation_search_radius)
     steps = [SimulationStep(value.(mechanical_step.prev_x), value.(mechanical_step.prev_y), value.(mechanical_step.prev_θ))]
-    simulation = Simulation(; grid, deformation_search_radius, temperature_search_radius, mechanical_step, steps)
+    simulation = Simulation(
+        ;grid, shape_memory_scaling, initial_temperature,
+        deformation_search_radius, temperature_search_radius,
+        mechanical_step, steps
+    )
     run_first_mechanical_step(simulation)
-    push!(steps, SimulationStep(value.(mechanical_step.x), value.(mechanical_step.y), value.(mechanical_step.prev_θ)))
-    plot(steps[end], grid.triangles)
-
-    # simulation
+    simulation
 end
 
 function plot(step::SimulationStep, triangles)
@@ -152,8 +157,7 @@ function create_mechanical_step_objective(simulation::Simulation)
         )
     )
     JuMP.@NLexpression(m, dissipation, 0.5 * sum(d for d in norm_sqr.(symmetrized_strain_rates)))
-    # JuMP.@NLobjective(m, Min, elastic_energy + self.fps * dissipation)
-    JuMP.@NLobjective(m, Min, elastic_energy)
+    JuMP.@NLobjective(m, Min, elastic_energy + simulation.fps * dissipation)
 end
 
 function neo_hook(F::NLExprMatrix)
