@@ -14,7 +14,7 @@ struct MechanicalStep
 end
 
 function MechanicalStep(grid::SimulationGrid, search_rad)
-    m = JuMP.Model(() -> MadNLP.Optimizer(print_level=MadNLP.WARN, blas_num_threads=8))
+    m = JuMP.Model(() -> MadNLP.Optimizer(print_level=MadNLP.WARN, blas_num_threads=16))
 
     # previous steps
     num_vertices = grid.num_vertices
@@ -61,14 +61,42 @@ function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temp
     deformation_search_radius = 1.1 * shape_memory_scaling * max(width, height)
     temperature_search_radius = initial_temperature + 10
     mechanical_step = MechanicalStep(grid, deformation_search_radius)
-    steps = [SimulationStep(value.(mechanical_step.prev_x), value.(mechanical_step.prev_y), value.(mechanical_step.prev_θ))]
+    x0 = JuMP.value.(mechanical_step.prev_x)
+    y0 = JuMP.value.(mechanical_step.prev_y)
+    θ0 = JuMP.value.(mechanical_step.prev_θ)
+    steps = [SimulationStep(x0, y0, θ0)]
     simulation = Simulation(
         ;grid, shape_memory_scaling, initial_temperature,
         deformation_search_radius, temperature_search_radius,
         mechanical_step, steps
     )
-    run_first_mechanical_step(simulation)
+    run_first_mechanical_step!(simulation)
     simulation
+end
+
+function update_mechanical_step!(simulation::Simulation)
+    mechanical_step = simulation.mechanical_step
+    JuMP.set_value.(mechanical_step.prev_x, JuMP.value.(mechanical_step.x))
+    JuMP.set_value.(mechanical_step.prev_y, JuMP.value.(mechanical_step.y))
+end
+
+function solve_mechanical_step!(simulation::Simulation)
+    JuMP.optimize!(simulation.mechanical_step.model)
+end
+
+function append_step!(simulation::Simulation)
+    x = JuMP.value.(simulation.mechanical_step.x)
+    y = JuMP.value.(simulation.mechanical_step.y)
+    θ = JuMP.value.(simulation.mechanical_step.prev_θ)
+    push!(simulation.steps, SimulationStep(x, y, θ))
+end
+
+function simulate!(simulation::Simulation, num_steps = 1)
+    for _ in 1:num_steps
+        update_mechanical_step!(simulation)
+        solve_mechanical_step!(simulation)
+        append_step!(simulation)
+    end
 end
 
 function plot(step::SimulationStep, triangles)
@@ -107,12 +135,12 @@ function plot(step::SimulationStep, triangles)
     fig
 end
 
-function run_first_mechanical_step(simulation::Simulation)
-    create_mechanical_step_objective(simulation)
-    JuMP.optimize!(simulation.mechanical_step.model)
+function run_first_mechanical_step!(simulation::Simulation)
+    create_mechanical_step_objective!(simulation)
+    solve_mechanical_step!(simulation)
 end
 
-function create_mechanical_step_objective(simulation::Simulation)
+function create_mechanical_step_objective!(simulation::Simulation)
     m = simulation.mechanical_step.model
     prev_x = simulation.mechanical_step.prev_x
     prev_y = simulation.mechanical_step.prev_y
