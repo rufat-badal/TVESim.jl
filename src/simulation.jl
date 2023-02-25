@@ -13,7 +13,7 @@ struct MechanicalStep
     y::Vector{JuMP.VariableRef}
 end
 
-function MechanicalStep(grid::SimulationGrid, search_rad)
+function MechanicalStep(grid::SimulationGrid, search_rad::Number)
     m = JuMP.Model(() -> MadNLP.Optimizer(print_level=MadNLP.WARN, blas_num_threads=16))
 
     # previous steps
@@ -39,6 +39,35 @@ function MechanicalStep(grid::SimulationGrid, search_rad)
     MechanicalStep(m, prev_x, prev_y, prev_θ, x, y)
 end
 
+struct ThermalStep
+    model::JuMP.Model
+    prev_x::Vector{JuMP.NonlinearParameter}
+    prev_y::Vector{JuMP.NonlinearParameter}
+    prev_θ::Vector{JuMP.NonlinearParameter}
+    x::Vector{JuMP.NonlinearParameter}
+    y::Vector{JuMP.NonlinearParameter}
+    θ::Vector{JuMP.VariableRef}
+end
+
+function ThermalStep(grid::SimulationGrid, mechanical_step::MechanicalStep, search_rad::Number)
+    m = JuMP.Model(() -> MadNLP.Optimizer(print_level=MadNLP.WARN, blas_num_threads=8))
+    
+    num_vertices = grid.num_vertices
+    JuMP.@NLparameter(m, prev_x[i=1:num_vertices] == JuMP.value(mechanical_step.prev_x[i]))
+    JuMP.@NLparameter(m, prev_y[i=1:num_vertices] == JuMP.value(mechanical_step.prev_y[i]))
+    JuMP.@NLparameter(m, prev_θ[i=1:num_vertices] == JuMP.value(mechanical_step.prev_θ[i]))
+    JuMP.@NLparameter(m, x[i=1:num_vertices] == JuMP.value(mechanical_step.x[i]))
+    JuMP.@NLparameter(m, y[i=1:num_vertices] == JuMP.value(mechanical_step.y[i]))
+
+    JuMP.@variable(
+        m,
+        JuMP.value(prev_θ[i]) - search_rad <= θ[i=1:num_vertices] <= JuMP.value(prev_θ[i]) + search_rad,
+        start = JuMP.value(prev_θ[i])
+    )
+
+    ThermalStep(m, prev_x, prev_y, prev_θ, x, y, θ)
+end
+
 Base.@kwdef struct Simulation
     grid::SimulationGrid
     deformation_search_radius::Number
@@ -59,7 +88,6 @@ function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temp
     width = maximum(grid.x) - minimum(grid.x)
     height = maximum(grid.y) - minimum(grid.y)
     deformation_search_radius = 1.1 * shape_memory_scaling * max(width, height)
-    temperature_search_radius = initial_temperature + 10
 
     mechanical_step = MechanicalStep(grid, deformation_search_radius)
     x = JuMP.value.(mechanical_step.prev_x)
@@ -72,6 +100,9 @@ function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temp
     y = JuMP.value.(mechanical_step.y)
     θ = JuMP.value.(mechanical_step.prev_θ)
     push!(steps, SimulationStep(x, y, θ))
+
+    temperature_search_radius = initial_temperature + 10
+    thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
 
     Simulation(
         ;grid, shape_memory_scaling, initial_temperature, fps,
