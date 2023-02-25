@@ -145,6 +145,13 @@ function create_objective!(
     # recompute strain and strain rate
     prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
     symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
+
+    dissipation_rate = norm_sqr.(symmetrized_strain_rates)
+    
+    JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
+    integral_prev_austenite_percentage = integral(austenite_percentage, prev_θ, grid.triangles, m)
+    display(JuMP.value.(integral_prev_austenite_percentage))
+
 end
 
 function update!(mechanical_step::MechanicalStep)
@@ -230,7 +237,12 @@ function get_symmetrized_strain_rates(prev_strains, strains)
     ]
 end
 
-function integrate(f, node_values, m)
+function integral(f, x, triangles, m)
+    [integral(f, (x[i1], x[i2], x[i3]), m) for (i1, i2, i3) in triangles]
+end
+
+function integral(f, node_values, m)
+    # It is assumed that f was already registered by the caller
     f_symb = Symbol(f)
     θ1, θ2, θ3 = node_values
     expr = :(($f_symb($(θ1)) + $f_symb($(θ2)) + $f_symb($(θ3))) / 3)
@@ -249,18 +261,7 @@ function create_objective!(mechanical_step::MechanicalStep, grid::SimulationGrid
     prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
     symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
-    austenite_percentages = [
-        integrate(austenite_percentage, (prev_θ[i1], prev_θ[i2], prev_θ[i3]), m)
-        for (i1, i2, i3) in grid.triangles
-    ]
-    display(JuMP.value.(austenite_percentages))
-    # austenite_percentages = Vector{JuMP.NonlinearExpression}(undef, length(grid.triangles))
-    # for (i, (i1, i2, i3)) in enumerate(grid.triangles)
-    #     austenite_percentages[i] = JuMP.@NLexpression(
-    #         m,
-    #         (austenite_percentage(prev_θ[i1]) + austenite_percentage(prev_θ[i2]) + austenite_percentage(prev_θ[i3])) / 3
-    #     )
-    # end
+    austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
 
     # objective
     scaling_matrix = [1/shape_memory_scaling 0; 0 1]
@@ -279,16 +280,6 @@ function create_objective!(mechanical_step::MechanicalStep, grid::SimulationGrid
     )
     JuMP.@NLexpression(m, dissipation, 0.5 * sum(d for d in norm_sqr.(symmetrized_strain_rates)))
     JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
-end
-
-function neo_hook(F::NLExprMatrix)
-    trace_C = tr(transpose(F) * F)
-    det_F = det(F)
-    JuMP.@NLexpression(F.model, trace_C - 2 - 2 * log(det_F) + (det_F - 1)^2)
-end
-
-function austenite_percentage(θ)
-    return 1 - 1 / (1 + θ)
 end
 
 function strain((triangle, reference_triangle))
