@@ -12,6 +12,7 @@ import Base: +, -, *, inv
 import LinearAlgebra: tr, det, transpose
 import CairoMakie
 import Triangulate
+import ProgressBars
 
 include("linalg_for_nlexpr.jl")
 include("grid.jl")

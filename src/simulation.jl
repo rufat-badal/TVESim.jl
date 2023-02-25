@@ -45,7 +45,7 @@ Base.@kwdef struct Simulation
     temperature_search_radius::Number
     shape_memory_scaling::Number
     initial_temperature::Number
-    fps::Number = 1
+    fps::Number = 30
     initial_scaling::Number = 1.0
     heat_conductivity::Vector{Number} = [1.0, 1.0]
     heat_transfer_coefficient::Number = 0.5
@@ -92,7 +92,12 @@ function append_step!(simulation::Simulation)
 end
 
 function simulate!(simulation::Simulation, num_steps = 1)
-    for _ in 1:num_steps
+    steps = 1:num_steps
+    if num_steps > 1
+        steps = ProgressBars.ProgressBar(1:num_steps)
+    end
+
+    for _ in steps
         update_mechanical_step!(simulation)
         solve_mechanical_step!(simulation)
         append_step!(simulation)
