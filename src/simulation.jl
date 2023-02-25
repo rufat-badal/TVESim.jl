@@ -198,6 +198,14 @@ function get_strains(m, prev_x, prev_y, x, y, grid)
     prev_strains, strains
 end
 
+function get_symmetrized_strain_rates(prev_strains, strains)
+    strain_rates = [F - prev_F for (F, prev_F) in zip(strains, prev_strains)]
+    [
+        transpose(dot_F) * prev_F + transpose(prev_F) * dot_F
+        for (prev_F, dot_F) in zip(prev_strains, strain_rates)
+    ]
+end
+
 function create_objective!(mechanical_step::MechanicalStep, grid::SimulationGrid, shape_memory_scaling::Number, fps::Number)
     m = mechanical_step.model
     prev_x = mechanical_step.prev_x
@@ -208,11 +216,7 @@ function create_objective!(mechanical_step::MechanicalStep, grid::SimulationGrid
 
     # compute strains and symmetrized strain-rates
     prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
-    strain_rates = [F - prev_F for (F, prev_F) in zip(strains, prev_strains)]
-    symmetrized_strain_rates = [
-        transpose(dot_F) * prev_F + transpose(prev_F) * dot_F
-        for (prev_F, dot_F) in zip(prev_strains, strain_rates)
-    ]
+    symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
     austenite_percentages = Vector{JuMP.NonlinearExpression}(undef, length(grid.triangles))
     for (i, (i1, i2, i3)) in enumerate(grid.triangles)
