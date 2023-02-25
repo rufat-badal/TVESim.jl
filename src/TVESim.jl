@@ -5,7 +5,6 @@ export Simulation
 export simulate!
 
 import JuMP
-import JuMP.value
 import MadNLP
 import Base
 import Base: +, -, *, inv

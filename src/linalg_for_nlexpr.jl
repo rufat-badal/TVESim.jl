@@ -5,7 +5,7 @@ struct NLExprMatrix
     _matrix::Matrix{JuMP.NonlinearExpression}
 end
 
-function value(A::NLExprMatrix)
+function JuMP.value(A::NLExprMatrix)
     value.(A._matrix)
 end
 
