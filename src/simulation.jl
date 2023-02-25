@@ -25,14 +25,14 @@ function MechanicalStep(grid::SimulationGrid, search_rad)
     # variables
     JuMP.@variable(
         m,
-        value(prev_x[i]) - search_rad <= x[i=1:num_vertices] <= value(prev_x[i]) + search_rad,
-        start = value(prev_x[i])
+        JuMP.value(prev_x[i]) - search_rad <= x[i=1:num_vertices] <= JuMP.value(prev_x[i]) + search_rad,
+        start = JuMP.value(prev_x[i])
     )
     JuMP.@constraint(m, fix_x[i=1:grid.num_dirichlet_vertices], x[i] == grid.x[i])
     JuMP.@variable(
         m,
-        value(prev_y[i]) - search_rad <= y[i=1:num_vertices] <= value(prev_y[i]) + search_rad,
-        start = value(prev_y[i])
+        JuMP.value(prev_y[i]) - search_rad <= y[i=1:num_vertices] <= JuMP.value(prev_y[i]) + search_rad,
+        start = JuMP.value(prev_y[i])
     )
     JuMP.@constraint(m, fix_y[i=1:grid.num_dirichlet_vertices], y[i] == grid.y[i])
 
@@ -45,7 +45,7 @@ Base.@kwdef struct Simulation
     temperature_search_radius::Number
     shape_memory_scaling::Number
     initial_temperature::Number
-    fps::Number = 30
+    fps::Number
     initial_scaling::Number = 1.0
     heat_conductivity::Vector{Number} = [1.0, 1.0]
     heat_transfer_coefficient::Number = 0.5
@@ -55,23 +55,29 @@ Base.@kwdef struct Simulation
     steps::Vector{SimulationStep}
 end
 
-function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temperature=0)
+function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temperature=0, fps=30)
     width = maximum(grid.x) - minimum(grid.x)
     height = maximum(grid.y) - minimum(grid.y)
     deformation_search_radius = 1.1 * shape_memory_scaling * max(width, height)
     temperature_search_radius = initial_temperature + 10
+
     mechanical_step = MechanicalStep(grid, deformation_search_radius)
-    x0 = JuMP.value.(mechanical_step.prev_x)
-    y0 = JuMP.value.(mechanical_step.prev_y)
-    θ0 = JuMP.value.(mechanical_step.prev_θ)
-    steps = [SimulationStep(x0, y0, θ0)]
-    simulation = Simulation(
-        ;grid, shape_memory_scaling, initial_temperature,
+    x = JuMP.value.(mechanical_step.prev_x)
+    y = JuMP.value.(mechanical_step.prev_y)
+    θ = JuMP.value.(mechanical_step.prev_θ)
+    steps = [SimulationStep(x, y, θ)]
+
+    first_time_run!(mechanical_step, grid, shape_memory_scaling, fps)
+    x = JuMP.value.(mechanical_step.x)
+    y = JuMP.value.(mechanical_step.y)
+    θ = JuMP.value.(mechanical_step.prev_θ)
+    push!(steps, SimulationStep(x, y, θ))
+
+    Simulation(
+        ;grid, shape_memory_scaling, initial_temperature, fps,
         deformation_search_radius, temperature_search_radius,
         mechanical_step, steps
     )
-    run_first_mechanical_step!(simulation)
-    simulation
 end
 
 function update_mechanical_step!(simulation::Simulation)
@@ -140,19 +146,18 @@ function plot(step::SimulationStep, triangles)
     fig
 end
 
-function run_first_mechanical_step!(simulation::Simulation)
-    create_mechanical_step_objective!(simulation)
-    solve_mechanical_step!(simulation)
+function first_time_run!(mechanical_step::MechanicalStep, grid::SimulationGrid, shape_memory_scaling::Number, fps::Number)
+    create_objective!(mechanical_step, grid, shape_memory_scaling, fps)
+    JuMP.optimize!(mechanical_step.model)
 end
 
-function create_mechanical_step_objective!(simulation::Simulation)
-    m = simulation.mechanical_step.model
-    prev_x = simulation.mechanical_step.prev_x
-    prev_y = simulation.mechanical_step.prev_y
-    prev_θ = simulation.mechanical_step.prev_θ
-    x = simulation.mechanical_step.x
-    y = simulation.mechanical_step.y
-    grid = simulation.grid
+function create_objective!(mechanical_step::MechanicalStep, grid::SimulationGrid, shape_memory_scaling::Number, fps::Number)
+    m = mechanical_step.model
+    prev_x = mechanical_step.prev_x
+    prev_y = mechanical_step.prev_y
+    prev_θ = mechanical_step.prev_θ
+    x = mechanical_step.x
+    y = mechanical_step.y
 
     # compute strains and symmetrized strain-rates
     prev_triangles = [[NLExprVector(m, [prev_x[i], prev_y[i]]) for i in T] for T in grid.triangles]
@@ -175,7 +180,7 @@ function create_mechanical_step_objective!(simulation::Simulation)
     end
 
     # objective
-    scaling_matrix = [1/simulation.shape_memory_scaling 0; 0 1]
+    scaling_matrix = [1/shape_memory_scaling 0; 0 1]
     scaled_strains = [F * scaling_matrix for F in strains]
     JuMP.@NLexpression(
         m, elastic_energy,
@@ -190,7 +195,7 @@ function create_mechanical_step_objective!(simulation::Simulation)
         )
     )
     JuMP.@NLexpression(m, dissipation, 0.5 * sum(d for d in norm_sqr.(symmetrized_strain_rates)))
-    JuMP.@NLobjective(m, Min, elastic_energy + simulation.fps * dissipation)
+    JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
 end
 
 function neo_hook(F::NLExprMatrix)
