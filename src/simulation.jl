@@ -51,7 +51,7 @@ end
 
 function ThermalStep(grid::SimulationGrid, mechanical_step::MechanicalStep, search_rad::Number)
     m = JuMP.Model(() -> MadNLP.Optimizer(print_level=MadNLP.WARN, blas_num_threads=8))
-    
+
     num_vertices = grid.num_vertices
     JuMP.@NLparameter(m, prev_x[i=1:num_vertices] == JuMP.value(mechanical_step.prev_x[i]))
     JuMP.@NLparameter(m, prev_y[i=1:num_vertices] == JuMP.value(mechanical_step.prev_y[i]))
@@ -94,11 +94,12 @@ function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temp
     y = JuMP.value.(mechanical_step.prev_y)
     θ = JuMP.value.(mechanical_step.prev_θ)
     steps = [SimulationStep(x, y, θ)]
-    create_objective!(mechanical_step, grid, shape_memory_scaling, fps) 
+    create_objective!(mechanical_step, grid, shape_memory_scaling, fps)
     JuMP.optimize!(mechanical_step.model)
 
     temperature_search_radius = initial_temperature + 10
     thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
+    create_objective!(thermal_step, grid)
 
     x = JuMP.value.(mechanical_step.x)
     y = JuMP.value.(mechanical_step.y)
@@ -106,10 +107,20 @@ function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temp
     push!(steps, SimulationStep(x, y, θ))
 
     Simulation(
-        ;grid, shape_memory_scaling, initial_temperature, fps,
+        ; grid, shape_memory_scaling, initial_temperature, fps,
         deformation_search_radius, temperature_search_radius,
         mechanical_step, steps
     )
+end
+
+function create_objective!(thermal_step::ThermalStep, grid::SimulationGrid)
+    m = thermal_step.model
+    prev_x = thermal_step.prev_x
+    prev_y = thermal_step.prev_y
+    prev_θ = thermal_step.prev_θ
+    x = thermal_step.x
+    y = thermal_step.y
+    θ = thermal_step.θ
 end
 
 function update!(mechanical_step::MechanicalStep)
@@ -128,7 +139,7 @@ function append_step!(simulation::Simulation)
     push!(simulation.steps, SimulationStep(x, y, θ))
 end
 
-function simulate!(simulation::Simulation, num_steps = 1)
+function simulate!(simulation::Simulation, num_steps=1)
     steps = 1:num_steps
     if num_steps > 1
         steps = ProgressBars.ProgressBar(1:num_steps)
@@ -177,6 +188,16 @@ function plot(step::SimulationStep, triangles)
     fig
 end
 
+function get_strains(m, prev_x, prev_y, x, y, grid)
+    prev_triangles = [[NLExprVector(m, [prev_x[i], prev_y[i]]) for i in T] for T in grid.triangles]
+    triangles = [[NLExprVector(m, [x[i], y[i]]) for i in T] for T in grid.triangles]
+    reference_triangles = [[[grid.x[i], grid.y[i]] for i in T] for T in grid.triangles]
+    prev_strains = strain.(zip(prev_triangles, reference_triangles))
+    strains = strain.(zip(triangles, reference_triangles))
+
+    prev_strains, strains
+end
+
 function create_objective!(mechanical_step::MechanicalStep, grid::SimulationGrid, shape_memory_scaling::Number, fps::Number)
     m = mechanical_step.model
     prev_x = mechanical_step.prev_x
@@ -186,11 +207,7 @@ function create_objective!(mechanical_step::MechanicalStep, grid::SimulationGrid
     y = mechanical_step.y
 
     # compute strains and symmetrized strain-rates
-    prev_triangles = [[NLExprVector(m, [prev_x[i], prev_y[i]]) for i in T] for T in grid.triangles]
-    triangles = [[NLExprVector(m, [x[i], y[i]]) for i in T] for T in grid.triangles]
-    reference_triangles = [[[grid.x[i], grid.y[i]] for i in T] for T in grid.triangles]
-    prev_strains = strain.(zip(prev_triangles, reference_triangles))
-    strains = strain.(zip(triangles, reference_triangles))
+    prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
     strain_rates = [F - prev_F for (F, prev_F) in zip(strains, prev_strains)]
     symmetrized_strain_rates = [
         transpose(dot_F) * prev_F + transpose(prev_F) * dot_F
