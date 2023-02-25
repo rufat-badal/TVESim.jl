@@ -68,23 +68,31 @@ function ThermalStep(grid::SimulationGrid, mechanical_step::MechanicalStep, sear
     ThermalStep(m, prev_x, prev_y, prev_θ, x, y, θ)
 end
 
-Base.@kwdef struct Simulation
+struct Simulation
     grid::SimulationGrid
     deformation_search_radius::Number
     temperature_search_radius::Number
     shape_memory_scaling::Number
     initial_temperature::Number
     fps::Number
-    initial_scaling::Number = 1.0
-    heat_conductivity::Vector{Number} = [1.0, 1.0]
-    heat_transfer_coefficient::Number = 0.5
-    entropic_heat_capacity::Number = 10.0
-    external_temperature::Number = 0.0
+    heat_transfer_coefficient::Number
+    heat_conductivity::Vector{Number}
+    entropic_heat_capacity::Number
+    external_temperature::Number
     mechanical_step::MechanicalStep
     steps::Vector{SimulationStep}
 end
 
-function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temperature=0, fps=30)
+function Simulation(
+    grid::SimulationGrid;
+    shape_memory_scaling=1.5,
+    initial_temperature=0,
+    fps=30,
+    heat_transfer_coefficient=0.5,
+    heat_conductivity=[1.0, 1.0],
+    entropic_heat_capacity=10.0,
+    external_temperature=0.0
+)
     width = maximum(grid.x) - minimum(grid.x)
     height = maximum(grid.y) - minimum(grid.y)
     deformation_search_radius = 1.1 * shape_memory_scaling * max(width, height)
@@ -99,7 +107,7 @@ function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temp
 
     temperature_search_radius = initial_temperature + 10
     thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
-    create_objective!(thermal_step, grid)
+    create_objective!(thermal_step, grid, heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature)
 
     x = JuMP.value.(mechanical_step.x)
     y = JuMP.value.(mechanical_step.y)
@@ -107,13 +115,25 @@ function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temp
     push!(steps, SimulationStep(x, y, θ))
 
     Simulation(
-        ; grid, shape_memory_scaling, initial_temperature, fps,
-        deformation_search_radius, temperature_search_radius,
-        mechanical_step, steps
+        grid,
+        deformation_search_radius,
+        temperature_search_radius,
+        shape_memory_scaling,
+        initial_temperature,
+        fps,
+        heat_transfer_coefficient,
+        heat_conductivity,
+        entropic_heat_capacity,
+        external_temperature,
+        mechanical_step,
+        steps
     )
 end
 
-function create_objective!(thermal_step::ThermalStep, grid::SimulationGrid)
+function create_objective!(
+    thermal_step::ThermalStep, grid::SimulationGrid,
+    heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
+)
     m = thermal_step.model
     prev_x = thermal_step.prev_x
     prev_y = thermal_step.prev_y
@@ -121,6 +141,10 @@ function create_objective!(thermal_step::ThermalStep, grid::SimulationGrid)
     x = thermal_step.x
     y = thermal_step.y
     θ = thermal_step.θ
+
+    # recompute strain and strain rate
+    prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
+    symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
 end
 
 function update!(mechanical_step::MechanicalStep)
