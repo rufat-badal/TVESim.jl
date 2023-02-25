@@ -94,15 +94,16 @@ function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temp
     y = JuMP.value.(mechanical_step.prev_y)
     θ = JuMP.value.(mechanical_step.prev_θ)
     steps = [SimulationStep(x, y, θ)]
+    create_objective!(mechanical_step, grid, shape_memory_scaling, fps) 
+    JuMP.optimize!(mechanical_step.model)
 
-    first_time_run!(mechanical_step, grid, shape_memory_scaling, fps)
+    temperature_search_radius = initial_temperature + 10
+    thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
+
     x = JuMP.value.(mechanical_step.x)
     y = JuMP.value.(mechanical_step.y)
     θ = JuMP.value.(mechanical_step.prev_θ)
     push!(steps, SimulationStep(x, y, θ))
-
-    temperature_search_radius = initial_temperature + 10
-    thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
 
     Simulation(
         ;grid, shape_memory_scaling, initial_temperature, fps,
@@ -174,11 +175,6 @@ function plot(step::SimulationStep, triangles)
     CairoMakie.poly!(vertex_coords, faces, color=:transparent, strokewidth=strokewidth, shading=true)
 
     fig
-end
-
-function first_time_run!(mechanical_step::MechanicalStep, grid::SimulationGrid, shape_memory_scaling::Number, fps::Number)
-    create_objective!(mechanical_step, grid, shape_memory_scaling, fps)
-    JuMP.optimize!(mechanical_step.model)
 end
 
 function create_objective!(mechanical_step::MechanicalStep, grid::SimulationGrid, shape_memory_scaling::Number, fps::Number)
