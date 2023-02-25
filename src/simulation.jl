@@ -111,14 +111,13 @@ function Simulation(grid::SimulationGrid; shape_memory_scaling=1.5, initial_temp
     )
 end
 
-function update_mechanical_step!(simulation::Simulation)
-    mechanical_step = simulation.mechanical_step
+function update!(mechanical_step::MechanicalStep)
     JuMP.set_value.(mechanical_step.prev_x, JuMP.value.(mechanical_step.x))
     JuMP.set_value.(mechanical_step.prev_y, JuMP.value.(mechanical_step.y))
 end
 
-function solve_mechanical_step!(simulation::Simulation)
-    JuMP.optimize!(simulation.mechanical_step.model)
+function solve!(mechanical_step::MechanicalStep)
+    JuMP.optimize!(mechanical_step.model)
 end
 
 function append_step!(simulation::Simulation)
@@ -135,8 +134,8 @@ function simulate!(simulation::Simulation, num_steps = 1)
     end
 
     for _ in steps
-        update_mechanical_step!(simulation)
-        solve_mechanical_step!(simulation)
+        update!(simulation.mechanical_step)
+        solve!(simulation.mechanical_step)
         append_step!(simulation)
     end
 end
