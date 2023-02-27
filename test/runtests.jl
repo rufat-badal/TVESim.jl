@@ -30,7 +30,7 @@ end
     A_internal_matrix = Matrix{NonlinearExpression}(undef, m, n)
     for j in 1:n
         for i in 1:m
-            A_internal_matrix[i, j] = A[i, j]
+            A_internal_matrix[i, j] = A._matrix[i, j]
         end
     end
     @test A_internal_matrix == A._matrix
@@ -54,8 +54,3 @@ end
     @test value(det(A)) ≈ det(A_val)
     @test value(A * TVESim.adjugate(A)) ≈ det(A_val) * Matrix(I, n, n)
 end
-
-# rng = MersenneTwister(RNG_SEED)
-# model = Model()
-# m, n = 100, 120
-# A, A_val = get_matrix_pair(rng, model, m, n)

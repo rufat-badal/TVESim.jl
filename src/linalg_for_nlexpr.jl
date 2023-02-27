@@ -143,7 +143,7 @@ function det(A::NLExprMatrix)
     elseif n == 1
         return A[1, 1]
     elseif n == 2
-        return JuMP.@NLexpression(A.model, A[1, 1] * A[2, 2] - A[2, 1] * A[1, 2])
+        return JuMP.@NLexpression(A.model, A._matrix[1, 1] * A._matrix[2, 2] - A._matrix[2, 1] * A._matrix[1, 2])
     end
 
     det_A = JuMP.@NLexpression(A.model, 0.0)
@@ -152,19 +152,14 @@ function det(A::NLExprMatrix)
         det_minor = det(minor(A, 1, j))
 
         if isodd(j)
-            det_A = JuMP.@NLexpression(A.model, det_A + A[1, j] * det_minor)
+            det_A = JuMP.@NLexpression(A.model, det_A + A._matrix[1, j] * det_minor)
         else
-            det_A = JuMP.@NLexpression(A.model, det_A - A[1, j] * det_minor)
+            det_A = JuMP.@NLexpression(A.model, det_A - A._matrix[1, j] * det_minor)
         end
     end
 
     det_A
 end
-
-function Base.getindex(A::NLExprMatrix, i, j)
-    Base.getindex(A._matrix, i, j)
-end
-
 
 function minor(A::Matrix{JuMP.NonlinearExpression}, i, j)
     m, n = size(A)
