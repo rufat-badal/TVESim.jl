@@ -5,6 +5,28 @@ struct NLExprMatrix
     _matrix::Matrix{JuMP.NonlinearExpression}
 end
 
+# TODO: replace NLExprMatrix by Matrix{NLExprEntry}
+struct NLExprEntry
+    model::JuMP.Model
+    _expr::JuMP.NonlinearExpression
+end
+
+function Base.getindex(A::NLExprMatrix, i, j)
+    NLExprEntry(A.model, A._matrix[i, j])
+end
+
+function -(a::NLExprEntry)
+    NLExprEntry(a.model, JuMP.@NLexpression(a.model, -a._expr))
+end
+
+function NLExprMatrix(A::Matrix{NLExprEntry})
+    m, n = size(A)
+    (m > 0 && n > 0) || throw(ArgumentError("cannot create NLExprMatrix from an empty array"))
+    model = A[1, 1].model
+    B = [A[i, j]._expr for i in 1:m, j in 1:n]
+    NLExprMatrix(model, B)
+end
+
 function JuMP.value(A::NLExprMatrix)
     value.(A._matrix)
 end

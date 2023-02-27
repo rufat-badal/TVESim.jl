@@ -35,6 +35,8 @@ end
     end
     @test A_internal_matrix == A._matrix
     @test value(TVESim.norm_sqr(A)) ≈ sum(A_val .^ 2)
+    B = TVESim.NLExprMatrix([A[i, j] for i in 1:m, j in 1:n])
+    @test value(B) == value(A)
 
     B, B_val = get_matrix_pair(rng, model, m, n)
     @test value(A + B) ≈ A_val + B_val
