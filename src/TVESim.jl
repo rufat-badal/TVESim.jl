@@ -8,7 +8,7 @@ import JuMP
 import MadNLP
 import Base
 import Base: +, -, *, inv
-import LinearAlgebra: tr, det, transpose
+import LinearAlgebra: tr, det, transpose, dot
 import CairoMakie
 import Triangulate
 import ProgressBars

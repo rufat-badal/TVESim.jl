@@ -35,12 +35,13 @@ end
     end
     @test A_internal_matrix == A._matrix
     @test value(TVESim.norm_sqr(A)) ≈ sum(A_val .^ 2)
-    B = TVESim.NLExprMatrix([A[i, j] for i in 1:m, j in 1:n])
-    @test value(B) == value(A)
+    A_tilde = TVESim.NLExprMatrix([A[i, j] for i in 1:m, j in 1:n])
+    @test value(A_tilde) == value(A)
 
     B, B_val = get_matrix_pair(rng, model, m, n)
     @test value(A + B) ≈ A_val + B_val
     @test value(A - B) ≈ A_val - B_val
+    @test value(dot(A, B)) ≈ dot(A_val, B_val)
 
     m, n, l = 100, 123, 78
     A, A_val = get_matrix_pair(rng, model, m, n)
@@ -56,3 +57,9 @@ end
     @test value(det(A)) ≈ det(A_val)
     @test value(A * TVESim.adjugate(A)) ≈ det(A_val) * Matrix(I, n, n)
 end
+
+# rng = MersenneTwister(RNG_SEED)
+# model = Model()
+# m, n = 100, 120
+# A, A_val = get_matrix_pair(rng, model, m, n)
+# B, B_val = get_matrix_pair(rng, model, m, n)

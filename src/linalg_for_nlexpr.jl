@@ -257,6 +257,17 @@ function transpose(A::NLExprMatrix)
     NLExprMatrix(model, A_transposed)
 end
 
+function dot(A::NLExprMatrix, B::NLExprMatrix)
+    A.model == B.model || throw(ArgumentError("matrices from two different models cannot be dotted"))
+
+    model = A.model
+    A = A._matrix
+    B = B._matrix
+    m, n = checksizematch(A, B)
+
+    JuMP.@NLexpression(model, sum(A[i, j] * B[i, j] for i in 1:m, j in 1:n))
+end
+
 function norm_sqr(A::NLExprMatrix)
     JuMP.@NLexpression(A.model, sum(a^2 for a in A._matrix))
 end
