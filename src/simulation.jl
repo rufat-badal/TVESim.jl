@@ -107,7 +107,10 @@ function Simulation(
 
     temperature_search_radius = initial_temperature + 10
     thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
-    create_objective!(thermal_step, grid, heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature)
+    create_objective!(
+        thermal_step, grid, shape_memory_scaling,
+        heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
+    )
 
     x = JuMP.value.(mechanical_step.x)
     y = JuMP.value.(mechanical_step.y)
@@ -132,7 +135,7 @@ end
 
 function create_objective!(
     thermal_step::ThermalStep, grid::SimulationGrid,
-    heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
+    shape_memory_scaling, heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
 )
     m = thermal_step.model
     prev_x = thermal_step.prev_x
@@ -144,14 +147,25 @@ function create_objective!(
 
     # recompute strain and strain rate
     prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
-    symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
+    strain_rates, symmetrized_strain_rates = get_strain_rates(prev_strains, strains)
 
+    # heat sources and sinks
     dissipation_rate = norm_sqr.(symmetrized_strain_rates)
     
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
     integral_prev_austenite_percentage = integral(austenite_percentage, prev_θ, grid.triangles, m)
-    display(JuMP.value.(integral_prev_austenite_percentage))
-
+    scaling_matrix = [1/shape_memory_scaling 0; 0 1]
+    adiabatic_term = [
+        dot(
+            a_perc * (
+                gradient_austenite_potential(F)
+                - gradient_martensite_potential(F, scaling_matrix)
+            ), dot_F
+        )
+        for (a_perc, F, dot_F) in zip(
+            integral_prev_austenite_percentage, prev_strains, strain_rates
+        )
+    ]
 end
 
 function update!(mechanical_step::MechanicalStep)
@@ -235,6 +249,15 @@ function get_symmetrized_strain_rates(prev_strains, strains)
         transpose(dot_F) * prev_F + transpose(prev_F) * dot_F
         for (prev_F, dot_F) in zip(prev_strains, strain_rates)
     ]
+end
+
+function get_strain_rates(prev_strains, strains)
+    strain_rates = [F - prev_F for (F, prev_F) in zip(strains, prev_strains)]
+    symmetrized_strain_rates = [
+        transpose(dot_F) * prev_F + transpose(prev_F) * dot_F
+        for (prev_F, dot_F) in zip(prev_strains, strain_rates)
+    ]
+    strain_rates, symmetrized_strain_rates
 end
 
 function integral(f, x, triangles, m)
