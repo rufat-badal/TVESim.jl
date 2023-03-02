@@ -23,21 +23,21 @@ end
     m, n = 10, 12
     scalar = 23.0
     A, A_val = get_matrix_pair(rng, model, m, n)
-    @test value.(scalar * A) ≈ scalar * A_val
-    @test value.(-A) ≈ -A_val
-    @test value.(transpose(A)) ≈ transpose(A_val)
+    @test value.(scalar * A) == scalar * A_val
+    @test value.(-A) == -A_val
+    @test value.(transpose(A)) == transpose(A_val)
     @test value(TVESim.norm_sqr(A)) ≈ sum(A_val .^ 2)
 
     B, B_val = get_matrix_pair(rng, model, m, n)
-    @test value.(A + B) ≈ A_val + B_val
-    @test value.(A_val + B) ≈ A_val + B_val
-    @test value.(A + B_val) ≈ A_val + B_val
-    @test value.(A - B) ≈ A_val - B_val
-    @test value.(A_val - B) ≈ A_val - B_val
-    @test value.(A - B_val) ≈ A_val - B_val
-    @test value(dot(A, B)) ≈ dot(A_val, B_val)
-    @test value(dot(A_val, B)) ≈ dot(A_val, B_val)
-    @test value(dot(A, B_val)) ≈ dot(A_val, B_val)
+    @test value.(A + B) == A_val + B_val
+    @test value.(A_val + B) == A_val + B_val
+    @test value.(A + B_val) == A_val + B_val
+    @test value.(A - B) == A_val - B_val
+    @test value.(A_val - B) == A_val - B_val
+    @test value.(A - B_val) == A_val - B_val
+    @test value(dot(A, B)) == dot(A_val, B_val)
+    @test value(dot(A_val, B)) == dot(A_val, B_val)
+    @test value(dot(A, B_val)) == dot(A_val, B_val)
 
     # m, n, l = 100, 123, 78
     # A, A_val = get_matrix_pair(rng, model, m, n)
@@ -54,26 +54,8 @@ end
     # @test value(A * TVESim.adjugate(A)) ≈ det(A_val) * Matrix(I, n, n)
 end
 
-# model = Model()
-# e1 = TVESim.AdvancedNonlinearExpression(model, @NLexpression(model, 1.0))
-# e2 = TVESim.AdvancedNonlinearExpression(model, @NLexpression(model, 2.0))
-# dot(e1, e2)
-# e3 = 3.0
-# display(e1)
-# display(e2)
-# display(-e1)
-# display(e1 + e2)
-# display(e1 + e3)
-# display(e3 + e1)
-# display(e1 - e2)
-# display(e1 - e3)
-# display(e3 - e1)
-# display(e1 * e2)
-# display(e1 * e3)
-# display(e3 * e1)
-# value(e3 * e2)
-
 # rng = MersenneTwister(RNG_SEED)
 # model = Model()
-# m, n = 100, 120
+# m, n = 4, 5
 # A, A_val = get_matrix_pair(rng, model, m, n)
+# B, B_val = get_matrix_pair(rng, model, m, n)

@@ -38,7 +38,7 @@ function Base.:-(x::AdvancedNonlinearExpression, y::Number)
 end
 
 function Base.:-(x::Number, y::AdvancedNonlinearExpression)
-    y - x
+    AdvancedNonlinearExpression(y.model, JuMP.@NLexpression(y.model, x - y._expression))
 end
 
 function Base.:*(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
