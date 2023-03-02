@@ -57,7 +57,7 @@ end
 transpose(x::AdvancedNonlinearExpression) = x
 
 function Base.:^(x::AdvancedNonlinearExpression, power::Int)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression ^ power))
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression^power))
 end
 
 function dot(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix{AdvancedNonlinearExpression})
@@ -67,6 +67,17 @@ function dot(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix{A
         JuMP.@NLexpression(
             model,
             sum(x._expression * y._expression for (x, y) in zip(X, Y))
+        )
+    )
+end
+
+function norm_sqr(X::AbstractMatrix{AdvancedNonlinearExpression})
+    model = X[1, 1].model
+    AdvancedNonlinearExpression(
+        model,
+        JuMP.@NLexpression(
+            model,
+            sum(x._expression^2 for x in X)
         )
     )
 end
