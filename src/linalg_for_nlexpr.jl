@@ -181,3 +181,33 @@ function tr(X::Matrix{AdvancedNonlinearExpression})
         JuMP.@NLexpression(model, sum(X[i, i]._expression for i in 1:n))
     )
 end
+
+function minor(X::Matrix{AdvancedNonlinearExpression}, i, j)
+    m, n = size(X)
+
+    (1 <= i <= m && 1 <= j <= n) || throw(ArgumentError("minor indices not in the correct range, current values: ($i, $j)"))
+
+    Xminor = Matrix{AdvancedNonlinearExpression}(undef, m - 1, n - 1)
+    if m == 1 || n == 1
+        return Xminor
+    end
+
+    for Xminor_col in 1:j-1
+        for Xminor_row in 1:i-1
+            Xminor[Xminor_row, Xminor_col] = X[Xminor_row, Xminor_col]
+        end
+        for Xminor_row in i:m-1
+            Xminor[Xminor_row, Xminor_col] = X[Xminor_row+1, Xminor_col]
+        end
+    end
+    for Xminor_col in j:n-1
+        for Xminor_row in 1:i-1
+            Xminor[Xminor_row, Xminor_col] = X[Xminor_row, Xminor_col+1]
+        end
+        for Xminor_row in i:m-1
+            Xminor[Xminor_row, Xminor_col] = X[Xminor_row+1, Xminor_col+1]
+        end
+    end
+
+    Xminor
+end
