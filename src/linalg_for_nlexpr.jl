@@ -3,59 +3,70 @@ struct AdvancedNonlinearExpression
     _expression::JuMP.NonlinearExpression
 end
 
-function Base.show(io::IO, e::AdvancedNonlinearExpression)
-    show(io, e._expression)
+function Base.show(io::IO, x::AdvancedNonlinearExpression)
+    show(io, x._expression)
 end
 
-function Base.:-(e::AdvancedNonlinearExpression)
-    AdvancedNonlinearExpression(e.model, JuMP.@NLexpression(e.model, -e._expression))
+function Base.:-(x::AdvancedNonlinearExpression)
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, -x._expression))
 end
 
-function checkmodelmatch(e1, e2)
-    e1.model == e2.model || throw(ArgumentError("nonlinear expressions belong to different models"))
+function checkmodelmatch(x, y)
+    x.model == y.model || throw(ArgumentError("nonlinear expressions belong to different models"))
 end
 
-function Base.:+(e1::AdvancedNonlinearExpression, e2::AdvancedNonlinearExpression)
-    checkmodelmatch(e1, e2)
-    AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e1._expression + e2._expression))
+function Base.:+(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
+    checkmodelmatch(x, y)
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression + y._expression))
 end
 
-function Base.:+(e1::AdvancedNonlinearExpression, e2::Number)
-    AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e1._expression + e2))
+function Base.:+(x::AdvancedNonlinearExpression, y::Number)
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression + y))
 end
 
-function Base.:+(e1::Number, e2::AdvancedNonlinearExpression)
-    e2 + e1
+function Base.:+(x::Number, y::AdvancedNonlinearExpression)
+    y + x
 end
 
-function Base.:-(e1::AdvancedNonlinearExpression, e2::AdvancedNonlinearExpression)
-    checkmodelmatch(e1, e2)
-    AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e1._expression - e2._expression))
+function Base.:-(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
+    checkmodelmatch(x, y)
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression - y._expression))
 end
 
-function Base.:-(e1::AdvancedNonlinearExpression, e2::Number)
-    AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e1._expression - e2))
+function Base.:-(x::AdvancedNonlinearExpression, y::Number)
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression - y))
 end
 
-function Base.:-(e1::Number, e2::AdvancedNonlinearExpression)
-    e2 - e1
+function Base.:-(x::Number, y::AdvancedNonlinearExpression)
+    y - x
 end
 
-function Base.:*(e1::AdvancedNonlinearExpression, e2::AdvancedNonlinearExpression)
-    checkmodelmatch(e1, e2)
-    AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e1._expression * e2._expression))
+function Base.:*(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
+    checkmodelmatch(x, y)
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression * y._expression))
 end
 
-function Base.:*(e1::AdvancedNonlinearExpression, e2::Number)
-    AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e2 * e1._expression))
+function Base.:*(x::AdvancedNonlinearExpression, y::Number)
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, y * x._expression))
 end
 
-function Base.:*(e1::Number, e2::AdvancedNonlinearExpression)
-    e2 * e1
+function Base.:*(x::Number, y::AdvancedNonlinearExpression)
+    y * x
 end
 
-transpose(e::AdvancedNonlinearExpression) = e
+transpose(x::AdvancedNonlinearExpression) = x
 
-function Base.:^(e::AdvancedNonlinearExpression, power::Int)
-    AdvancedNonlinearExpression(e.model, JuMP.@NLexpression(e.model, e._expression ^ power))
+function Base.:^(x::AdvancedNonlinearExpression, power::Int)
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression ^ power))
+end
+
+function dot(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix{AdvancedNonlinearExpression})
+    model = X[1, 1].model
+    AdvancedNonlinearExpression(
+        model,
+        JuMP.@NLexpression(
+            model,
+            sum(x._expression * y._expression for (x, y) in zip(X, Y))
+        )
+    )
 end
