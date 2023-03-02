@@ -20,12 +20,42 @@ function Base.:+(e1::AdvancedNonlinearExpression, e2::AdvancedNonlinearExpressio
     AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e1._expression + e2._expression))
 end
 
+function Base.:+(e1::AdvancedNonlinearExpression, e2::Number)
+    AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e1._expression + e2))
+end
+
+function Base.:+(e1::Number, e2::AdvancedNonlinearExpression)
+    e2 + e1
+end
+
 function Base.:-(e1::AdvancedNonlinearExpression, e2::AdvancedNonlinearExpression)
     checkmodelmatch(e1, e2)
     AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e1._expression - e2._expression))
 end
 
+function Base.:-(e1::AdvancedNonlinearExpression, e2::Number)
+    AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e1._expression - e2))
+end
+
+function Base.:-(e1::Number, e2::AdvancedNonlinearExpression)
+    e2 - e1
+end
+
 function Base.:*(e1::AdvancedNonlinearExpression, e2::AdvancedNonlinearExpression)
     checkmodelmatch(e1, e2)
     AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e1._expression * e2._expression))
+end
+
+function Base.:*(e1::AdvancedNonlinearExpression, e2::Number)
+    AdvancedNonlinearExpression(e1.model, JuMP.@NLexpression(e1.model, e2 * e1._expression))
+end
+
+function Base.:*(e1::Number, e2::AdvancedNonlinearExpression)
+    e2 * e1
+end
+
+transpose(e::AdvancedNonlinearExpression) = e
+
+function Base.:^(e::AdvancedNonlinearExpression, power::Int)
+    AdvancedNonlinearExpression(e.model, JuMP.@NLexpression(e.model, e._expression ^ power))
 end
