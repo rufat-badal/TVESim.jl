@@ -60,7 +60,7 @@ function Base.:^(x::AdvancedNonlinearExpression, power::Int)
     AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression^power))
 end
 
-function dot(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix{AdvancedNonlinearExpression})
+function dot(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix{AdvancedNonlinearExpression})
     model = X[1, 1].model
     AdvancedNonlinearExpression(
         model,
@@ -71,7 +71,7 @@ function dot(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix{A
     )
 end
 
-function dot(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix)
+function dot(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix)
     model = X[1, 1].model
     AdvancedNonlinearExpression(
         model,
@@ -82,11 +82,11 @@ function dot(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix)
     )
 end
 
-function dot(X::AbstractMatrix, Y::AbstractMatrix{AdvancedNonlinearExpression})
+function dot(X::Matrix, Y::Matrix{AdvancedNonlinearExpression})
     dot(Y, X)
 end
 
-function norm_sqr(X::AbstractMatrix{AdvancedNonlinearExpression})
+function norm_sqr(X::Matrix{AdvancedNonlinearExpression})
     model = X[1, 1].model
     AdvancedNonlinearExpression(
         model,
@@ -101,7 +101,7 @@ function get_product_size(A, B)
     
 end
 
-function Base.:*(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix{AdvancedNonlinearExpression})
+function Base.:*(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix{AdvancedNonlinearExpression})
     X_rows, X_cols = size(X)
     Y_rows, Y_cols = size(Y)
     X_cols == Y_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
@@ -123,7 +123,7 @@ function Base.:*(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatr
     XY
 end
 
-function Base.:*(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix)
+function Base.:*(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix)
     X_rows, X_cols = size(X)
     Y_rows, Y_cols = size(Y)
     X_cols == Y_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
@@ -145,7 +145,7 @@ function Base.:*(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatr
     XY
 end
 
-function Base.:*(X::AbstractMatrix, Y::AbstractMatrix{AdvancedNonlinearExpression})
+function Base.:*(X::Matrix, Y::Matrix{AdvancedNonlinearExpression})
     X_rows, X_cols = size(X)
     Y_rows, Y_cols = size(Y)
     X_cols == Y_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))

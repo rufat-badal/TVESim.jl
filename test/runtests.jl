@@ -61,3 +61,4 @@ end
 # m, n = 4, 5
 # A, A_val = get_matrix_pair(rng, model, m, n)
 # B, B_val = get_matrix_pair(rng, model, m, n)
+# C, C_val = get_matrix_pair(rng, model, m, m)
