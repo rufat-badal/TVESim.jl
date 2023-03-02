@@ -166,3 +166,18 @@ function Base.:*(X::Matrix, Y::Matrix{AdvancedNonlinearExpression})
 
     XY
 end
+
+function checksquare(A)
+    m, n = size(A)
+    m == n || throw(DimensionMismatch("operation does not support non-square matrices, matrix has size $(size(A))"))
+    return m
+end
+
+function tr(X::Matrix{AdvancedNonlinearExpression})
+    model = X[1, 1].model
+    n = checksquare(X)
+    AdvancedNonlinearExpression(
+        model,
+        JuMP.@NLexpression(model, sum(X[i, i]._expression for i in 1:n))
+    )
+end

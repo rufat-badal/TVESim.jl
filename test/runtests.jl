@@ -46,9 +46,9 @@ end
     @test value.(A_val * B) ≈ A_val * B_val
     @test value.(A * B_val) ≈ A_val * B_val
 
-    # n = 100
-    # A, A_val = get_matrix_pair(rng, model, n, n)
-    # @test value(tr(A)) ≈ tr(A_val)
+    n = 100
+    A, A_val = get_matrix_pair(rng, model, n, n)
+    @test value(tr(A)) ≈ tr(A_val)
 
     # n = 7
     # A, A_val = get_matrix_pair(rng, model, n, n)
