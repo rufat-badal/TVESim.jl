@@ -3,6 +3,13 @@ struct AdvancedNonlinearExpression
     _expression::JuMP.NonlinearExpression
 end
 
+function AdvancedNonlinearExpression(model::JuMP.Model, val)
+    AdvancedNonlinearExpression(
+        model,
+        JuMP.@NLexpression(model, val)
+    )
+end
+
 function Base.show(io::IO, x::AdvancedNonlinearExpression)
     show(io, x._expression)
 end
@@ -210,4 +217,38 @@ function minor(X::Matrix{AdvancedNonlinearExpression}, i, j)
     end
 
     Xminor
+end
+
+function det(X::Matrix{AdvancedNonlinearExpression})
+    n = checksquare(X)
+    model = X[1, 1].model
+
+    if n == 1
+        return X[1, 1]
+    elseif n == 2
+        return AdvancedNonlinearExpression(
+            model,
+            JuMP.@NLexpression(model, X[1, 1]._expression * X[2, 2]._expression - X[2, 1]._expression * X[1, 2]._expression)
+        )
+    end
+
+    det_X = AdvancedNonlinearExpression(model, 0)
+
+    for j in 1:n
+        det_minor = det(minor(X, 1, j))
+
+        if isodd(j)
+            det_X = AdvancedNonlinearExpression(
+                model,
+                JuMP.@NLexpression(model, det_X._expression + X[1, j]._expression * det_minor._expression)
+            )
+        else
+            det_X = AdvancedNonlinearExpression(
+                model,
+                JuMP.@NLexpression(model, det_X._expression - X[1, j]._expression * det_minor._expression)
+            )
+        end
+    end
+
+    det_X
 end
