@@ -27,13 +27,11 @@ end
     @test value.(-A) ≈ -A_val
     @test value.(transpose(A)) ≈ transpose(A_val)
     @test value(sum(A .^ 2)) ≈ sum(A_val .^ 2)
-#     # A_tilde = TVESim.NLExprMatrix([A[i, j] for i in 1:m, j in 1:n])
-#     # @test value(A_tilde) == value(A)
 
-#     # B, B_val = get_matrix_pair(rng, model, m, n)
-#     # @test value(A + B) ≈ A_val + B_val
-#     # @test value(A - B) ≈ A_val - B_val
-#     # @test value(dot(A, B)) ≈ dot(A_val, B_val)
+    B, B_val = get_matrix_pair(rng, model, m, n)
+    @test value.(A + B) ≈ A_val + B_val
+    # @test value.(A - B) ≈ A_val - B_val
+    # @test value.(dot(A, B)) ≈ dot(A_val, B_val)
 
 #     # m, n, l = 100, 123, 78
 #     # A, A_val = get_matrix_pair(rng, model, m, n)
