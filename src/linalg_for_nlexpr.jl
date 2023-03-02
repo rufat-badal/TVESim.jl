@@ -71,6 +71,21 @@ function dot(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix{A
     )
 end
 
+function dot(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix)
+    model = X[1, 1].model
+    AdvancedNonlinearExpression(
+        model,
+        JuMP.@NLexpression(
+            model,
+            sum(x._expression * y for (x, y) in zip(X, Y))
+        )
+    )
+end
+
+function dot(X::AbstractMatrix, Y::AbstractMatrix{AdvancedNonlinearExpression})
+    dot(Y, X)
+end
+
 function norm_sqr(X::AbstractMatrix{AdvancedNonlinearExpression})
     model = X[1, 1].model
     AdvancedNonlinearExpression(
