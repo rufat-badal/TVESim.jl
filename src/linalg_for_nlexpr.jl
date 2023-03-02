@@ -96,3 +96,73 @@ function norm_sqr(X::AbstractMatrix{AdvancedNonlinearExpression})
         )
     )
 end
+
+function get_product_size(A, B)
+    
+end
+
+function Base.:*(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix{AdvancedNonlinearExpression})
+    X_rows, X_cols = size(X)
+    Y_rows, Y_cols = size(Y)
+    X_cols == Y_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
+    XY_rows, XY_cols = X_rows, Y_cols
+
+    model = X[1, 1].model
+
+    XY = Matrix{AdvancedNonlinearExpression}(undef, XY_rows, XY_cols)
+
+    for j in 1:XY_cols
+        for i in 1:XY_rows
+            XY[i, j] = AdvancedNonlinearExpression(
+                model,
+                JuMP.@NLexpression(model, sum(X[i, k]._expression * Y[k, j]._expression for k in 1:X_cols))
+            )
+        end
+    end
+
+    XY
+end
+
+function Base.:*(X::AbstractMatrix{AdvancedNonlinearExpression}, Y::AbstractMatrix)
+    X_rows, X_cols = size(X)
+    Y_rows, Y_cols = size(Y)
+    X_cols == Y_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
+    XY_rows, XY_cols = X_rows, Y_cols
+
+    model = X[1, 1].model
+
+    XY = Matrix{AdvancedNonlinearExpression}(undef, XY_rows, XY_cols)
+
+    for j in 1:XY_cols
+        for i in 1:XY_rows
+            XY[i, j] = AdvancedNonlinearExpression(
+                model,
+                JuMP.@NLexpression(model, sum(X[i, k]._expression * Y[k, j] for k in 1:X_cols))
+            )
+        end
+    end
+
+    XY
+end
+
+function Base.:*(X::AbstractMatrix, Y::AbstractMatrix{AdvancedNonlinearExpression})
+    X_rows, X_cols = size(X)
+    Y_rows, Y_cols = size(Y)
+    X_cols == Y_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
+    XY_rows, XY_cols = X_rows, Y_cols
+
+    model = Y[1, 1].model
+
+    XY = Matrix{AdvancedNonlinearExpression}(undef, XY_rows, XY_cols)
+
+    for j in 1:XY_cols
+        for i in 1:XY_rows
+            XY[i, j] = AdvancedNonlinearExpression(
+                model,
+                JuMP.@NLexpression(model, sum(X[i, k] * Y[k, j]._expression for k in 1:X_cols))
+            )
+        end
+    end
+
+    XY
+end

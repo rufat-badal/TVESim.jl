@@ -39,10 +39,12 @@ end
     @test value(dot(A_val, B)) == dot(A_val, B_val)
     @test value(dot(A, B_val)) == dot(A_val, B_val)
 
-    # m, n, l = 100, 123, 78
-    # A, A_val = get_matrix_pair(rng, model, m, n)
-    # B, B_val = get_matrix_pair(rng, model, n, l)
-    # @test value(A * B) ≈ A_val * B_val
+    m, n, l = 100, 123, 78
+    A, A_val = get_matrix_pair(rng, model, m, n)
+    B, B_val = get_matrix_pair(rng, model, n, l)
+    @test value.(A * B) ≈ A_val * B_val
+    @test value.(A_val * B) ≈ A_val * B_val
+    @test value.(A * B_val) ≈ A_val * B_val
 
     # n = 100
     # A, A_val = get_matrix_pair(rng, model, n, n)
