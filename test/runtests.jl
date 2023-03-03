@@ -17,9 +17,12 @@ end
     model = Model()
 
     m, n = 100, 120
-    scalar = 23
+    λ_val = 23
+    λ = TVESim.AdvancedNonlinearExpression(model, λ_val)
     A, A_val = get_matrix_pair(rng, model, m, n)
-    @test value.(scalar * A) == scalar * A_val
+    @test value.(λ_val * A) == λ_val * A_val
+    @test value.(λ * A) == λ_val * A_val
+    @test value.(A * λ) == λ_val * A_val
     @test value.(-A) == -A_val
     @test value.(transpose(A)) == transpose(A_val)
     @test value(TVESim.norm_sqr(A)) ≈ sum(A_val .^ 2)

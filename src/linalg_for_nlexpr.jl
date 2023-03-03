@@ -65,6 +65,15 @@ function Base.:*(x::Number, y::AdvancedNonlinearExpression)
     y * x
 end
 
+function Base.:*(scalar::AdvancedNonlinearExpression, X::Matrix{AdvancedNonlinearExpression})
+    m, n = size(X)
+    [scalar * X[i, j] for i in 1:m, j in 1:n]
+end
+
+function Base.:*(X::Matrix{AdvancedNonlinearExpression}, scalar::AdvancedNonlinearExpression)
+    scalar * X
+end
+
 transpose(x::AdvancedNonlinearExpression) = x
 
 function Base.:^(x::AdvancedNonlinearExpression, power::Int)
