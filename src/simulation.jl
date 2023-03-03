@@ -112,25 +112,25 @@ function Simulation(
         heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
     )
 
-    # x = JuMP.value.(mechanical_step.x)
-    # y = JuMP.value.(mechanical_step.y)
-    # θ = JuMP.value.(mechanical_step.prev_θ)
-    # push!(steps, SimulationStep(x, y, θ))
+    x = JuMP.value.(mechanical_step.x)
+    y = JuMP.value.(mechanical_step.y)
+    θ = JuMP.value.(mechanical_step.prev_θ)
+    push!(steps, SimulationStep(x, y, θ))
 
-    # Simulation(
-    #     grid,
-    #     deformation_search_radius,
-    #     temperature_search_radius,
-    #     shape_memory_scaling,
-    #     initial_temperature,
-    #     fps,
-    #     heat_transfer_coefficient,
-    #     heat_conductivity,
-    #     entropic_heat_capacity,
-    #     external_temperature,
-    #     mechanical_step,
-    #     steps
-    # )
+    Simulation(
+        grid,
+        deformation_search_radius,
+        temperature_search_radius,
+        shape_memory_scaling,
+        initial_temperature,
+        fps,
+        heat_transfer_coefficient,
+        heat_conductivity,
+        entropic_heat_capacity,
+        external_temperature,
+        mechanical_step,
+        steps
+    )
 end
 
 function create_objective!(
