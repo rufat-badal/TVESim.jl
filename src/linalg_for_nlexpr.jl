@@ -301,3 +301,7 @@ end
 function Base.inv(X::Matrix{AdvancedNonlinearExpression})
     adjugate(X) / det(X)
 end
+
+function nlexpr_vector(model::JuMP.Model, iterable)
+    [AdvancedNonlinearExpression(model, x) for x in iterable]
+end
