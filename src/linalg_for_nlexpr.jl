@@ -120,11 +120,7 @@ function Base.:/(X::Matrix{AdvancedNonlinearExpression}, scalar::JuMP.NonlinearE
     ]
 end
 
-function Base.:*(X::Matrix{AdvancedNonlinearExpression}, scalar::JuMP.NonlinearExpression)
-    scalar * X
-end
-
-function transpose(X::Matrix{AdvancedNonlinearExpression})
+function Base.transpose(X::Matrix{AdvancedNonlinearExpression})
     m, n = size(X)
     Xtransp = Matrix{AdvancedNonlinearExpression}(undef, n, m)
     for j in 1:m
