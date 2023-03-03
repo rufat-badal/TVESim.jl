@@ -252,3 +252,22 @@ function det(X::Matrix{AdvancedNonlinearExpression})
 
     det_X
 end
+
+function adjugate(X::Matrix{AdvancedNonlinearExpression})
+    n = checksquare(X)
+    Xadj = Matrix{AdvancedNonlinearExpression}(undef, n, n)
+
+    for j in 1:n
+        for i in 1:n
+            det_Xminor = det(minor(X, j, i))
+            if iseven(i + j)
+                Xadj[i, j] = det_Xminor
+            else
+                Xadj[i, j] = -det_Xminor
+            end
+        end
+    end
+
+    Xadj
+end
+

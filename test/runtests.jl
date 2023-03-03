@@ -20,8 +20,8 @@ end
     rng = MersenneTwister(RNG_SEED)
     model = Model()
 
-    m, n = 10, 12
-    scalar = 23.0
+    m, n = 100, 120
+    scalar = 23
     A, A_val = get_matrix_pair(rng, model, m, n)
     @test value.(scalar * A) == scalar * A_val
     @test value.(-A) == -A_val
@@ -35,9 +35,9 @@ end
     @test value.(A - B) == A_val - B_val
     @test value.(A_val - B) == A_val - B_val
     @test value.(A - B_val) == A_val - B_val
-    @test value(dot(A, B)) == dot(A_val, B_val)
-    @test value(dot(A_val, B)) == dot(A_val, B_val)
-    @test value(dot(A, B_val)) == dot(A_val, B_val)
+    @test value(dot(A, B)) ≈ dot(A_val, B_val)
+    @test value(dot(A_val, B)) ≈ dot(A_val, B_val)
+    @test value(dot(A, B_val)) ≈ dot(A_val, B_val)
 
     m, n, l = 100, 123, 78
     A, A_val = get_matrix_pair(rng, model, m, n)
@@ -53,7 +53,7 @@ end
     n = 7
     A, A_val = get_matrix_pair(rng, model, n, n)
     @test value(det(A)) ≈ det(A_val)
-    # @test value(A * TVESim.adjugate(A)) ≈ det(A_val) * Matrix(I, n, n)
+    @test value.(A * TVESim.adjugate(A)) ≈ det(A_val) * Matrix(I, n, n)
 end
 
 # rng = MersenneTwister(RNG_SEED)
