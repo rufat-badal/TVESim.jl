@@ -108,10 +108,6 @@ function norm_sqr(X::Matrix{AdvancedNonlinearExpression})
     )
 end
 
-function get_product_size(A, B)
-    
-end
-
 function Base.:*(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix{AdvancedNonlinearExpression})
     X_rows, X_cols = size(X)
     Y_rows, Y_cols = size(Y)
