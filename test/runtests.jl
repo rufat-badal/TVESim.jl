@@ -23,6 +23,8 @@ end
     @test value.(λ_val * A) == λ_val * A_val
     @test value.(λ * A) == λ_val * A_val
     @test value.(A * λ) == λ_val * A_val
+    @test value.(A / λ_val) == A_val / λ_val
+    @test value.(A / λ) == A_val / λ_val
     @test value.(-A) == -A_val
     @test value.(transpose(A)) == transpose(A_val)
     @test value(TVESim.norm_sqr(A)) ≈ sum(A_val .^ 2)
