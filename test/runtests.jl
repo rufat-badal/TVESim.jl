@@ -26,7 +26,7 @@ end
     @test value.(A / λ_val) == A_val / λ_val
     @test value.(A / λ) == A_val / λ_val
     @test value.(-A) == -A_val
-    @test value.(transpose(A)) == transpose(A_val)
+    @test value.(TVESim.transpose(A)) == transpose(A_val)
     @test value(TVESim.norm_sqr(A)) ≈ sum(A_val .^ 2)
 
     B, B_val = get_matrix_pair(rng, model, m, n)

@@ -92,7 +92,19 @@ function Base.:/(X::Matrix{AdvancedNonlinearExpression}, scalar::AdvancedNonline
     [X[i, j] / scalar for i in 1:m, j in 1:n]
 end
 
-transpose(x::AdvancedNonlinearExpression) = x
+
+function transpose(X::Matrix{AdvancedNonlinearExpression})
+    m, n = size(X)
+    Xtransp = Matrix{AdvancedNonlinearExpression}(undef, n, m)
+    for j in 1:m
+        for i in 1:n
+            Xtransp[i, j] = X[j, i]
+        end
+    end
+
+    Xtransp
+end
+
 
 function Base.:^(x::AdvancedNonlinearExpression, power::Int)
     AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression^power))
