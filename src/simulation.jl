@@ -286,26 +286,27 @@ function create_objective!(
     # compute strains and symmetrized strain-rates
     prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
     symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
-    # JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
-    # austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
+    JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
+    austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
 
     # objective
-    # scaling_matrix = [1/shape_memory_scaling 0; 0 1]
-    # scaled_strains = [F * scaling_matrix for F in strains]
-    # JuMP.@NLexpression(
-    #     m, elastic_energy,
-    #     0.5 * sum(
-    #         a_perc * neo_hook_F + (1 - a_perc) * neo_hook_F_scaled
-    #         for (F, a_perc, neo_hook_F, neo_hook_F_scaled) in zip(
-    #             strains,
-    #             austenite_percentages,
-    #             neo_hook.(strains),
-    #             neo_hook.(scaled_strains)
-    #         )
-    #     )
-    # )
-    # JuMP.@NLexpression(m, dissipation, 0.5 * sum(d for d in norm_sqr.(symmetrized_strain_rates)))
-    # JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
+    scaling_matrix = [1/shape_memory_scaling 0; 0 1]
+    scaled_strains = [F * scaling_matrix for F in strains]
+
+    JuMP.@NLexpression(
+        m, elastic_energy,
+        0.5 * sum(
+            a_perc * neo_hook_F + (1 - a_perc) * neo_hook_F_scaled
+            for (F, a_perc, neo_hook_F, neo_hook_F_scaled) in zip(
+                strains,
+                austenite_percentages,
+                neo_hook.(strains),
+                neo_hook.(scaled_strains)
+            )
+        )
+    )
+    JuMP.@NLexpression(m, dissipation, 0.5 * sum(d.expression for d in norm_sqr.(symmetrized_strain_rates)))
+    JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
 end
 
 function strain((triangle, reference_triangle))
