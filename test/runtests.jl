@@ -22,9 +22,12 @@ end
     A, A_val = get_matrix_pair(rng, model, m, n)
     @test value.(λ_val * A) == λ_val * A_val
     @test value.(λ * A) == λ_val * A_val
+    @test value.(λ.expression * A) == λ_val * A_val
+    @test value.(A * λ.expression) == λ_val * A_val
     @test value.(A * λ) == λ_val * A_val
     @test value.(A / λ_val) == A_val / λ_val
     @test value.(A / λ) == A_val / λ_val
+    @test value.(A / λ.expression) == A_val / λ_val
     @test value.(-A) == -A_val
     @test value.(TVESim.transpose(A)) == transpose(A_val)
     @test value(TVESim.norm_sqr(A)) ≈ sum(A_val .^ 2)

@@ -74,6 +74,22 @@ function Base.:*(X::Matrix{AdvancedNonlinearExpression}, scalar::AdvancedNonline
     scalar * X
 end
 
+function Base.:*(scalar::JuMP.NonlinearExpression, X::Matrix{AdvancedNonlinearExpression})
+    model = X[1, 1].model
+    m, n = size(X)
+    [
+        AdvancedNonlinearExpression(
+            model,
+            JuMP.@NLexpression(model, scalar * X[i, j].expression)
+        )
+        for i in 1:m, j in 1:n
+    ]
+end
+
+function Base.:*(X::Matrix{AdvancedNonlinearExpression}, scalar::JuMP.NonlinearExpression)
+    scalar * X
+end
+
 function Base.:/(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
     checkmodelmatch(x, y)
     AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression / y.expression))
@@ -92,6 +108,21 @@ function Base.:/(X::Matrix{AdvancedNonlinearExpression}, scalar::AdvancedNonline
     [X[i, j] / scalar for i in 1:m, j in 1:n]
 end
 
+function Base.:/(X::Matrix{AdvancedNonlinearExpression}, scalar::JuMP.NonlinearExpression)
+    model = X[1, 1].model
+    m, n = size(X)
+    [
+        AdvancedNonlinearExpression(
+            model,
+            JuMP.@NLexpression(model, X[i, j].expression / scalar)
+        )
+        for i in 1:m, j in 1:n
+    ]
+end
+
+function Base.:*(X::Matrix{AdvancedNonlinearExpression}, scalar::JuMP.NonlinearExpression)
+    scalar * X
+end
 
 function transpose(X::Matrix{AdvancedNonlinearExpression})
     m, n = size(X)
