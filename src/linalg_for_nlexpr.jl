@@ -31,11 +31,11 @@ function Base.:+(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
     AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression + y.expression))
 end
 
-function Base.:+(x::AdvancedNonlinearExpression, y::Number)
+function Base.:+(x::AdvancedNonlinearExpression, y)
     AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression + y))
 end
 
-function Base.:+(x::Number, y::AdvancedNonlinearExpression)
+function Base.:+(x, y::AdvancedNonlinearExpression)
     y + x
 end
 
@@ -44,11 +44,11 @@ function Base.:-(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
     AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression - y.expression))
 end
 
-function Base.:-(x::AdvancedNonlinearExpression, y::Number)
+function Base.:-(x::AdvancedNonlinearExpression, y)
     AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression - y))
 end
 
-function Base.:-(x::Number, y::AdvancedNonlinearExpression)
+function Base.:-(x, y::AdvancedNonlinearExpression)
     AdvancedNonlinearExpression(y.model, JuMP.@NLexpression(y.model, x - y.expression))
 end
 
@@ -57,11 +57,11 @@ function Base.:*(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
     AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression * y.expression))
 end
 
-function Base.:*(x::AdvancedNonlinearExpression, y::Number)
+function Base.:*(x::AdvancedNonlinearExpression, y)
     AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, y * x.expression))
 end
 
-function Base.:*(x::Number, y::AdvancedNonlinearExpression)
+function Base.:*(x, y::AdvancedNonlinearExpression)
     y * x
 end
 
