@@ -298,3 +298,6 @@ function adjugate(X::Matrix{AdvancedNonlinearExpression})
     Xadj
 end
 
+function Base.inv(X::Matrix{AdvancedNonlinearExpression})
+    adjugate(X) / det(X)
+end
