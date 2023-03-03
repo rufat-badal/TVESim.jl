@@ -103,14 +103,14 @@ function Simulation(
     θ = JuMP.value.(mechanical_step.prev_θ)
     steps = [SimulationStep(x, y, θ)]
     create_objective!(mechanical_step, grid, shape_memory_scaling, fps)
-    # JuMP.optimize!(mechanical_step.model)
+    JuMP.optimize!(mechanical_step.model)
 
-    # temperature_search_radius = initial_temperature + 10
-    # thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
-    # create_objective!(
-    #     thermal_step, grid, shape_memory_scaling,
-    #     heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
-    # )
+    temperature_search_radius = initial_temperature + 10
+    thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
+    create_objective!(
+        thermal_step, grid, shape_memory_scaling,
+        heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
+    )
 
     # x = JuMP.value.(mechanical_step.x)
     # y = JuMP.value.(mechanical_step.y)
