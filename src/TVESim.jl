@@ -1,8 +1,8 @@
 module TVESim
 
-# export SimulationGrid
-# export Simulation
-# export simulate!
+export SimulationGrid
+export Simulation
+export simulate!
 
 import JuMP
 import MadNLP
@@ -13,7 +13,7 @@ import ProgressBars
 
 include("linalg_for_nlexpr.jl")
 include("grid.jl")
-# include("special_functions.jl")
-# include("simulation.jl")
+include("special_functions.jl")
+include("simulation.jl")
 
 end

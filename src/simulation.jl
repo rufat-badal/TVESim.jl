@@ -103,34 +103,34 @@ function Simulation(
     θ = JuMP.value.(mechanical_step.prev_θ)
     steps = [SimulationStep(x, y, θ)]
     create_objective!(mechanical_step, grid, shape_memory_scaling, fps)
-    JuMP.optimize!(mechanical_step.model)
+    # JuMP.optimize!(mechanical_step.model)
 
-    temperature_search_radius = initial_temperature + 10
-    thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
-    create_objective!(
-        thermal_step, grid, shape_memory_scaling,
-        heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
-    )
+    # temperature_search_radius = initial_temperature + 10
+    # thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
+    # create_objective!(
+    #     thermal_step, grid, shape_memory_scaling,
+    #     heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
+    # )
 
-    x = JuMP.value.(mechanical_step.x)
-    y = JuMP.value.(mechanical_step.y)
-    θ = JuMP.value.(mechanical_step.prev_θ)
-    push!(steps, SimulationStep(x, y, θ))
+    # x = JuMP.value.(mechanical_step.x)
+    # y = JuMP.value.(mechanical_step.y)
+    # θ = JuMP.value.(mechanical_step.prev_θ)
+    # push!(steps, SimulationStep(x, y, θ))
 
-    Simulation(
-        grid,
-        deformation_search_radius,
-        temperature_search_radius,
-        shape_memory_scaling,
-        initial_temperature,
-        fps,
-        heat_transfer_coefficient,
-        heat_conductivity,
-        entropic_heat_capacity,
-        external_temperature,
-        mechanical_step,
-        steps
-    )
+    # Simulation(
+    #     grid,
+    #     deformation_search_radius,
+    #     temperature_search_radius,
+    #     shape_memory_scaling,
+    #     initial_temperature,
+    #     fps,
+    #     heat_transfer_coefficient,
+    #     heat_conductivity,
+    #     entropic_heat_capacity,
+    #     external_temperature,
+    #     mechanical_step,
+    #     steps
+    # )
 end
 
 function create_objective!(
@@ -234,8 +234,8 @@ function plot(step::SimulationStep, triangles)
 end
 
 function get_strains(m, prev_x, prev_y, x, y, grid)
-    prev_triangles = [[NLExprVector(m, [prev_x[i], prev_y[i]]) for i in T] for T in grid.triangles]
-    triangles = [[NLExprVector(m, [x[i], y[i]]) for i in T] for T in grid.triangles]
+    prev_triangles = [[nlexpr_vector(m, [prev_x[i], prev_y[i]]) for i in T] for T in grid.triangles]
+    triangles = [[nlexpr_vector(m, [x[i], y[i]]) for i in T] for T in grid.triangles]
     reference_triangles = [[[grid.x[i], grid.y[i]] for i in T] for T in grid.triangles]
     prev_strains = strain.(zip(prev_triangles, reference_triangles))
     strains = strain.(zip(triangles, reference_triangles))
@@ -272,7 +272,10 @@ function integral(f, node_values, m)
     JuMP.add_nonlinear_expression(m, expr)
 end
 
-function create_objective!(mechanical_step::MechanicalStep, grid::SimulationGrid, shape_memory_scaling::Number, fps::Number)
+function create_objective!(
+    mechanical_step::MechanicalStep, grid::SimulationGrid,
+    shape_memory_scaling::Number, fps::Number
+)
     m = mechanical_step.model
     prev_x = mechanical_step.prev_x
     prev_y = mechanical_step.prev_y
@@ -281,28 +284,29 @@ function create_objective!(mechanical_step::MechanicalStep, grid::SimulationGrid
     y = mechanical_step.y
 
     # compute strains and symmetrized strain-rates
-    prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
-    symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
-    JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
-    austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
+    get_strains(m, prev_x, prev_y, x, y, grid)
+    # prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
+    # symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
+    # JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
+    # austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
 
     # objective
-    scaling_matrix = [1/shape_memory_scaling 0; 0 1]
-    scaled_strains = [F * scaling_matrix for F in strains]
-    JuMP.@NLexpression(
-        m, elastic_energy,
-        0.5 * sum(
-            a_perc * neo_hook_F + (1 - a_perc) * neo_hook_F_scaled
-            for (F, a_perc, neo_hook_F, neo_hook_F_scaled) in zip(
-                strains,
-                austenite_percentages,
-                neo_hook.(strains),
-                neo_hook.(scaled_strains)
-            )
-        )
-    )
-    JuMP.@NLexpression(m, dissipation, 0.5 * sum(d for d in norm_sqr.(symmetrized_strain_rates)))
-    JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
+    # scaling_matrix = [1/shape_memory_scaling 0; 0 1]
+    # scaled_strains = [F * scaling_matrix for F in strains]
+    # JuMP.@NLexpression(
+    #     m, elastic_energy,
+    #     0.5 * sum(
+    #         a_perc * neo_hook_F + (1 - a_perc) * neo_hook_F_scaled
+    #         for (F, a_perc, neo_hook_F, neo_hook_F_scaled) in zip(
+    #             strains,
+    #             austenite_percentages,
+    #             neo_hook.(strains),
+    #             neo_hook.(scaled_strains)
+    #         )
+    #     )
+    # )
+    # JuMP.@NLexpression(m, dissipation, 0.5 * sum(d for d in norm_sqr.(symmetrized_strain_rates)))
+    # JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
 end
 
 function strain((triangle, reference_triangle))
