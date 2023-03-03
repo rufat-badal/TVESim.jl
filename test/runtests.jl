@@ -6,10 +6,6 @@ using LinearAlgebra
 
 const RNG_SEED = 42
 
-function JuMP.value(e::TVESim.AdvancedNonlinearExpression)
-    value(e.expression)
-end
-
 function get_matrix_pair(rng, model, m, n)
     A_val = rand(rng, m, n)
     A = [TVESim.AdvancedNonlinearExpression(model, @NLexpression(model, A_val[i, j])) for i in 1:m, j in 1:n]

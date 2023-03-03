@@ -3,6 +3,10 @@ struct AdvancedNonlinearExpression
     expression::JuMP.NonlinearExpression
 end
 
+function JuMP.value(x::AdvancedNonlinearExpression)
+    JuMP.value(x.expression)
+end
+
 function AdvancedNonlinearExpression(model::JuMP.Model, val)
     AdvancedNonlinearExpression(
         model,
