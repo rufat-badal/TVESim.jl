@@ -1,6 +1,6 @@
 struct AdvancedNonlinearExpression
     model::JuMP.Model
-    _expression::JuMP.NonlinearExpression
+    expression::JuMP.NonlinearExpression
 end
 
 function AdvancedNonlinearExpression(model::JuMP.Model, val)
@@ -11,11 +11,11 @@ function AdvancedNonlinearExpression(model::JuMP.Model, val)
 end
 
 function Base.show(io::IO, x::AdvancedNonlinearExpression)
-    show(io, x._expression)
+    show(io, x.expression)
 end
 
 function Base.:-(x::AdvancedNonlinearExpression)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, -x._expression))
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, -x.expression))
 end
 
 function checkmodelmatch(x, y)
@@ -24,11 +24,11 @@ end
 
 function Base.:+(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
     checkmodelmatch(x, y)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression + y._expression))
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression + y.expression))
 end
 
 function Base.:+(x::AdvancedNonlinearExpression, y::Number)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression + y))
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression + y))
 end
 
 function Base.:+(x::Number, y::AdvancedNonlinearExpression)
@@ -37,24 +37,24 @@ end
 
 function Base.:-(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
     checkmodelmatch(x, y)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression - y._expression))
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression - y.expression))
 end
 
 function Base.:-(x::AdvancedNonlinearExpression, y::Number)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression - y))
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression - y))
 end
 
 function Base.:-(x::Number, y::AdvancedNonlinearExpression)
-    AdvancedNonlinearExpression(y.model, JuMP.@NLexpression(y.model, x - y._expression))
+    AdvancedNonlinearExpression(y.model, JuMP.@NLexpression(y.model, x - y.expression))
 end
 
 function Base.:*(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
     checkmodelmatch(x, y)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression * y._expression))
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression * y.expression))
 end
 
 function Base.:*(x::AdvancedNonlinearExpression, y::Number)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, y * x._expression))
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, y * x.expression))
 end
 
 function Base.:*(x::Number, y::AdvancedNonlinearExpression)
@@ -64,7 +64,7 @@ end
 transpose(x::AdvancedNonlinearExpression) = x
 
 function Base.:^(x::AdvancedNonlinearExpression, power::Int)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x._expression^power))
+    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression^power))
 end
 
 function dot(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix{AdvancedNonlinearExpression})
@@ -73,7 +73,7 @@ function dot(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix{AdvancedNonlinear
         model,
         JuMP.@NLexpression(
             model,
-            sum(x._expression * y._expression for (x, y) in zip(X, Y))
+            sum(x.expression * y.expression for (x, y) in zip(X, Y))
         )
     )
 end
@@ -84,7 +84,7 @@ function dot(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix)
         model,
         JuMP.@NLexpression(
             model,
-            sum(x._expression * y for (x, y) in zip(X, Y))
+            sum(x.expression * y for (x, y) in zip(X, Y))
         )
     )
 end
@@ -99,7 +99,7 @@ function norm_sqr(X::Matrix{AdvancedNonlinearExpression})
         model,
         JuMP.@NLexpression(
             model,
-            sum(x._expression^2 for x in X)
+            sum(x.expression^2 for x in X)
         )
     )
 end
@@ -122,7 +122,7 @@ function Base.:*(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix{AdvancedNonli
         for i in 1:XY_rows
             XY[i, j] = AdvancedNonlinearExpression(
                 model,
-                JuMP.@NLexpression(model, sum(X[i, k]._expression * Y[k, j]._expression for k in 1:X_cols))
+                JuMP.@NLexpression(model, sum(X[i, k].expression * Y[k, j].expression for k in 1:X_cols))
             )
         end
     end
@@ -144,7 +144,7 @@ function Base.:*(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix)
         for i in 1:XY_rows
             XY[i, j] = AdvancedNonlinearExpression(
                 model,
-                JuMP.@NLexpression(model, sum(X[i, k]._expression * Y[k, j] for k in 1:X_cols))
+                JuMP.@NLexpression(model, sum(X[i, k].expression * Y[k, j] for k in 1:X_cols))
             )
         end
     end
@@ -166,7 +166,7 @@ function Base.:*(X::Matrix, Y::Matrix{AdvancedNonlinearExpression})
         for i in 1:XY_rows
             XY[i, j] = AdvancedNonlinearExpression(
                 model,
-                JuMP.@NLexpression(model, sum(X[i, k] * Y[k, j]._expression for k in 1:X_cols))
+                JuMP.@NLexpression(model, sum(X[i, k] * Y[k, j].expression for k in 1:X_cols))
             )
         end
     end
@@ -185,7 +185,7 @@ function tr(X::Matrix{AdvancedNonlinearExpression})
     n = checksquare(X)
     AdvancedNonlinearExpression(
         model,
-        JuMP.@NLexpression(model, sum(X[i, i]._expression for i in 1:n))
+        JuMP.@NLexpression(model, sum(X[i, i].expression for i in 1:n))
     )
 end
 
@@ -228,7 +228,7 @@ function det(X::Matrix{AdvancedNonlinearExpression})
     elseif n == 2
         return AdvancedNonlinearExpression(
             model,
-            JuMP.@NLexpression(model, X[1, 1]._expression * X[2, 2]._expression - X[2, 1]._expression * X[1, 2]._expression)
+            JuMP.@NLexpression(model, X[1, 1].expression * X[2, 2].expression - X[2, 1].expression * X[1, 2].expression)
         )
     end
 
@@ -240,12 +240,12 @@ function det(X::Matrix{AdvancedNonlinearExpression})
         if isodd(j)
             det_X = AdvancedNonlinearExpression(
                 model,
-                JuMP.@NLexpression(model, det_X._expression + X[1, j]._expression * det_minor._expression)
+                JuMP.@NLexpression(model, det_X.expression + X[1, j].expression * det_minor.expression)
             )
         else
             det_X = AdvancedNonlinearExpression(
                 model,
-                JuMP.@NLexpression(model, det_X._expression - X[1, j]._expression * det_minor._expression)
+                JuMP.@NLexpression(model, det_X.expression - X[1, j].expression * det_minor.expression)
             )
         end
     end

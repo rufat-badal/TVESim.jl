@@ -7,7 +7,7 @@ using LinearAlgebra
 const RNG_SEED = 42
 
 function JuMP.value(e::TVESim.AdvancedNonlinearExpression)
-    value(e._expression)
+    value(e.expression)
 end
 
 function get_matrix_pair(rng, model, m, n)
