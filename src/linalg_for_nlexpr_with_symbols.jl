@@ -60,7 +60,7 @@ function checksquare(A)
     return m
 end
 
-function minor(X::Matrix{T}, i, j) where T
+function minor(X::Matrix{T}, i, j) where {T}
     m, n = size(X)
 
     (1 <= i <= m && 1 <= j <= n) || throw(ArgumentError("minor indices not in the correct range, current values: ($i, $j)"))
@@ -112,4 +112,22 @@ function det(X::Matrix{JuMPExpression})
     end
 
     det_X
+end
+
+function adjugate(X::Matrix{JuMPExpression})
+    n = checksquare(X)
+    Xadj = Matrix{JuMPExpression}(undef, n, n)
+
+    for j in 1:n
+        for i in 1:n
+            det_Xminor = det(minor(X, j, i))
+            if iseven(i + j)
+                Xadj[i, j] = det_Xminor
+            else
+                Xadj[i, j] = -det_Xminor
+            end
+        end
+    end
+
+    Xadj
 end

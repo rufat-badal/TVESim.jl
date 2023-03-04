@@ -66,5 +66,5 @@ end
     n = 7
     X, X_val = get_matrix_pair(rng, model, n, n)
     @test value(TVESim.det(X)) ≈ det(X_val)
-    #     @test value.(X * TVESim.adjugate(X)) ≈ det(X_val) * Matrix(I, n, n)
+    @test value.(X * TVESim.adjugate(X)) ≈ det(X_val) * Matrix(I, n, n)
 end
