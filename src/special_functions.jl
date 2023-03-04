@@ -18,3 +18,13 @@ function gradient_martensite_potential(F::Matrix{JuMPExpression}, scaling_matrix
     # chain rule
     gradient_austenite_potential(F * scaling_matrix) * transpose(scaling_matrix)
 end
+
+austenite_potential(F::Matrix{JuMPExpression}) = neo_hook(F)
+martensite_potential(F, scaling_matrix) = austenite_potential(F * scaling_matrix)
+function internal_energy(F::Matrix{JuMPExpression}, theta::JuMPExpression, scaling_matrix, entropic_heat_capacity)
+    (
+        theta^2 / (1 + theta)^2
+        * (austenite_potential(F) - martensite_potential(F, scaling_matrix))
+        + entropic_heat_capacity * theta
+    )
+end
