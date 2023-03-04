@@ -1,19 +1,13 @@
 struct JuMPExpression
     model::JuMP.Model
-    expr 
+    expr
 end
 
-function Base.show(io::IO, x::JuMPExpression)
-    show(io, x.expr)
-end
+Base.show(io::IO, x::JuMPExpression) = show(io, x.expr)
 
-function jumpexpression_array(model, X::Array)
-    [JuMPExpression(model, x) for x in X]
-end
+jumpexpression_array(model, X::Array) = [JuMPExpression(model, x) for x in X]
 
-function JuMP.value(x::JuMPExpression)
-    JuMP.value(JuMP.add_nonlinear_expression(x.model, x.expr))
-end
+JuMP.value(x::JuMPExpression) = JuMP.value(JuMP.add_nonlinear_expression(x.model, x.expr))
 
 JuMPExpression(x::Number) = x
 
@@ -27,98 +21,35 @@ Base.iterate(x::JuMPExpression, ::Any) = nothing
 
 Base.transpose(x::JuMPExpression) = x
 
-function Base.:^(x::JuMPExpression, power::Integer)
-    JuMPExpression(x.model, :($(x.expr)^$(power)))
-end
+Base.:^(x::JuMPExpression, power::Integer) = JuMPExpression(x.model, :($(x.expr)^$(power)))
 
-function Base.:-(x::JuMPExpression)
-    JuMPExpression(x.model, :(-$(x.expr)))
-end
+Base.:-(x::JuMPExpression) = JuMPExpression(x.model, :(-$(x.expr)))
+Base.inv(x::JuMPExpression) = sJuMPExpression(x.model, :(1 / $(x.expr)))
 
-function Base.inv(x::JuMPExpression)
-    JuMPExpression(x.model, :(1 / $(x.expr)))
-end
+Base.:+(x::JuMPExpression, y::JuMPExpression) = JuMPExpression(x.model, :($(x.expr) + $(y.expr)))
+Base.:+(x::JuMPExpression, y) = JuMPExpression(x.model, :($(x.expr) + $(y)))
+Base.:+(x, y::JuMPExpression) = JuMPExpression(y.model, :($(x) + $(y.expr)))
 
-function Base.:+(x::JuMPExpression, y::JuMPExpression)
-    JuMPExpression(x.model, :($(x.expr) + $(y.expr)))
-end
+Base.:-(x::JuMPExpression, y::JuMPExpression) = JuMPExpression(x.model, :($(x.expr) - $(y.expr)))
+Base.:-(x::JuMPExpression, y) = JuMPExpression(x.model, :($(x.expr) - $(y)))
+Base.:-(x, y::JuMPExpression) = JuMPExpression(y.model, :($(x) - $(y.expr)))
 
-function Base.:+(x::JuMPExpression, y)
-    JuMPExpression(x.model, :($(x.expr) + $(y)))
-end
+Base.:*(x::JuMPExpression, y::JuMPExpression) = JuMPExpression(x.model, :($(x.expr) * $(y.expr)))
+Base.:*(x::JuMPExpression, y) = JuMPExpression(x.model, :($(x.expr) * $(y)))
+Base.:*(x, y::JuMPExpression) = JuMPExpression(y.model, :($(x) * $(y.expr)))
 
-function Base.:+(x, y::JuMPExpression)
-    JuMPExpression(y.model, :($(x) + $(y.expr)))
-end
+Base.:/(x::JuMPExpression, y::JuMPExpression) = JuMPExpression(x.model, :($(x.expr) / $(y.expr)))
+Base.:/(x::JuMPExpression, y) = JuMPExpression(x.model, :($(x.expr) / $(y)))
+Base.:/(x, y::JuMPExpression) = JuMPExpression(y.model, :($(x) / $(y.expr)))
 
-function Base.:-(x::JuMPExpression, y::JuMPExpression)
-    JuMPExpression(x.model, :($(x.expr) - $(y.expr)))
-end
+Base.:*(λ::JuMPExpression, X::Matrix{JuMPExpression}) = [λ * x for x in X]
+Base.:*(λ::JuMP.AbstractJuMPScalar, X::Matrix{JuMPExpression}) = [λ * x for x in X]
+Base.:*(X::Matrix{JuMPExpression}, λ::JuMPExpression) = [x * λ for x in X]
+Base.:*(X::Matrix{JuMPExpression}, λ::JuMP.AbstractJuMPScalar) = [x * λ for x in X]
 
-function Base.:-(x::JuMPExpression, y)
-    JuMPExpression(x.model, :($(x.expr) - $(y)))
-end
+Base.:/(X::Matrix{JuMPExpression}, λ::JuMPExpression) = [x / λ for x in X]
+Base.:/(X::Matrix{JuMPExpression}, λ::JuMP.AbstractJuMPScalar) = [x / λ for x in X]
 
-function Base.:-(x, y::JuMPExpression)
-    JuMPExpression(y.model, :($(x) - $(y.expr)))
-end
-
-function Base.:*(x::JuMPExpression, y::JuMPExpression)
-    JuMPExpression(x.model, :($(x.expr) * $(y.expr)))
-end
-
-function Base.:*(x::JuMPExpression, y)
-    JuMPExpression(x.model, :($(x.expr) * $(y)))
-end
-
-function Base.:*(x, y::JuMPExpression)
-    JuMPExpression(y.model, :($(x) * $(y.expr)))
-end
-
-function Base.:/(x::JuMPExpression, y::JuMPExpression)
-    JuMPExpression(x.model, :($(x.expr) / $(y.expr)))
-end
-
-function Base.:/(x::JuMPExpression, y)
-    JuMPExpression(x.model, :($(x.expr) / $(y)))
-end
-
-function Base.:/(x, y::JuMPExpression)
-    JuMPExpression(y.model, :($(x) / $(y.expr)))
-end
-
-function Base.:*(λ::JuMPExpression, X::Matrix{JuMPExpression})
-    [λ * x for x in X]
-end
-
-function Base.:*(λ::JuMP.AbstractJuMPScalar, X::Matrix{JuMPExpression})
-    [λ * x for x in X]
-end
-
-function Base.:*(X::Matrix{JuMPExpression}, λ::JuMPExpression)
-   [x * λ for x in X] 
-end
-
-function Base.:*(X::Matrix{JuMPExpression}, λ::JuMP.AbstractJuMPScalar)
-   [x * λ for x in X] 
-end
-
-function Base.:/(X::Matrix{JuMPExpression}, λ::JuMPExpression)
-   [x / λ for x in X] 
-end
-
-function Base.:/(X::Matrix{JuMPExpression}, λ::JuMP.AbstractJuMPScalar)
-   [x / λ for x in X] 
-end
-
-function LinearAlgebra.dot(x::JuMPExpression, y::JuMPExpression)
-    x * y
-end
-
-function LinearAlgebra.dot(x, y::JuMPExpression)
-    x * y
-end
-
-function LinearAlgebra.dot(x::JuMPExpression, y)
-    x * y
-end
+LinearAlgebra.dot(x::JuMPExpression, y::JuMPExpression) = x * y
+LinearAlgebra.dot(x, y::JuMPExpression) = x * y
+LinearAlgebra.dot(x::JuMPExpression, y) = x * y
