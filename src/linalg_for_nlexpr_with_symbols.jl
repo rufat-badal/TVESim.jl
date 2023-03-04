@@ -131,3 +131,7 @@ function adjugate(X::Matrix{JuMPExpression})
 
     Xadj
 end
+
+function Base.inv(X::Matrix{JuMPExpression})
+    adjugate(X) / det(X)
+end

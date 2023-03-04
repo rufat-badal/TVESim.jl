@@ -67,4 +67,18 @@ end
     X, X_val = get_matrix_pair(rng, model, n, n)
     @test value(TVESim.det(X)) ≈ det(X_val)
     @test value.(X * TVESim.adjugate(X)) ≈ det(X_val) * Matrix(I, n, n)
+    num_tries = 10
+    for i in 1:num_tries
+        X_val = rand(rng, n, n)
+        if det(X_val) != 0
+            X = @NLparameter(model, [i = 1:n, j = 1:n] == X_val[i, j])
+            X = TVESim.jumpexpression_array(model, X)
+            @test value.(inv(X)) ≈ inv(X_val)
+            break
+        end
+
+        if i == num_tries
+            println("Invertible matrix could not be found after $num_tries tries")
+        end
+    end
 end
