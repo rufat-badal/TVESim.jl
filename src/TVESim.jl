@@ -6,6 +6,7 @@ module TVESim
 
 import JuMP
 import MadNLP
+import LinearAlgebra
 import CairoMakie
 import Triangulate
 import ProgressBars

@@ -12,63 +12,59 @@ function get_matrix_pair(rng, model, m, n)
     TVESim.jumpexpression_array(model, X), X_val
 end
 
-rng = MersenneTwister(RNG_SEED)
-model = Model()
-m, n = 3, 4
-X, X_val = get_matrix_pair(rng, model, m, n)
-λ_val = 3
-λ = TVESim.JuMPExpression(model, @NLparameter(model, value = λ_val))
-x = X[1]
-x_val = value(x.expr)
-y = X[2]
-y_val = value(y.expr)
-Z = λ.expr * X
-add_nonlinear_expression(model, Z[1, 1])
+# rng = MersenneTwister(RNG_SEED)
+# model = Model()
+# m, n = 2, 2
+# X, X_val = get_matrix_pair(rng, model, m, n)
+# λ_val = 3
+# λ = TVESim.JuMPExpression(model, @NLparameter(model, value = λ_val))
 
-# @testset "Linear algebra operations" begin
-#     rng = MersenneTwister(RNG_SEED)
-#     model = Model()
+@testset "Linear algebra operations" begin
+    rng = MersenneTwister(RNG_SEED)
+    model = Model()
 
-#     m, n = 100, 120
-#     λ_val = 23
-#     λ = TVESim.AdvancedNonlinearExpression(model, λ_val)
-#     A, A_val = get_matrix_pair(rng, model, m, n)
-#     @test value.(λ_val * A) == λ_val * A_val
-#     @test value.(λ * A) == λ_val * A_val
-#     @test value.(λ.expression * A) == λ_val * A_val
-#     @test value.(A * λ.expression) == λ_val * A_val
-#     @test value.(A * λ) == λ_val * A_val
-#     @test value.(A / λ_val) == A_val / λ_val
-#     @test value.(A / λ) == A_val / λ_val
-#     @test value.(A / λ.expression) == A_val / λ_val
-#     @test value.(-A) == -A_val
-#     @test value.(TVESim.transpose(A)) == transpose(A_val)
-#     @test value(TVESim.norm_sqr(A)) ≈ sum(A_val .^ 2)
+    m, n = 100, 120
+    λ_val = 23
+    λ = TVESim.JuMPExpression(model, @NLparameter(model, value = λ_val))
+    X, X_val = get_matrix_pair(rng, model, m, n)
+    @test value.(X) == X_val
+    @test value.(-X) == -X_val
+    @test value.(λ_val * X) == λ_val * X_val
+    @test value.(X * λ_val) == X_val * λ_val
+    @test value.(λ * X) == λ_val * X_val
+    @test value.(X * λ) == X_val * λ_val
+    @test value.(λ.expr * X) == λ_val * X_val
+    @test value.(X * λ.expr) == X_val * λ_val
+    @test value.(X / λ_val) == X_val / λ_val
+    @test value.(X / λ) == X_val / λ_val
+    @test value.(X / λ.expr) == X_val / λ_val
+    @test value.(transpose(X)) == transpose(X_val)
+    @test value(sum(X .^ 2)) ≈ sum(X_val .^ 2)
 
-#     B, B_val = get_matrix_pair(rng, model, m, n)
-#     @test value.(A + B) == A_val + B_val
-#     @test value.(A_val + B) == A_val + B_val
-#     @test value.(A + B_val) == A_val + B_val
-#     @test value.(A - B) == A_val - B_val
-#     @test value.(A_val - B) == A_val - B_val
-#     @test value.(A - B_val) == A_val - B_val
-#     @test value(TVESim.dot(A, B)) ≈ dot(A_val, B_val)
-#     @test value(TVESim.dot(A_val, B)) ≈ dot(A_val, B_val)
-#     @test value(TVESim.dot(A, B_val)) ≈ dot(A_val, B_val)
+    Y, Y_val = get_matrix_pair(rng, model, m, n)
+    @test value.(X + Y) == X_val + Y_val
+    @test value.(X_val + Y) == X_val + Y_val
+    @test value.(X + Y_val) == X_val + Y_val
+    @test value.(X - Y) == X_val - Y_val
+    @test value.(X_val - Y) == X_val - Y_val
+    @test value.(X - Y_val) == X_val - Y_val
+    @test value(dot(X, Y)) ≈ dot(X_val, Y_val)
+    @test value(dot(X_val, Y)) ≈ dot(X_val, Y_val)
+    @test value(dot(X, Y_val)) ≈ dot(X_val, Y_val)
 
-#     m, n, l = 100, 123, 78
-#     A, A_val = get_matrix_pair(rng, model, m, n)
-#     B, B_val = get_matrix_pair(rng, model, n, l)
-#     @test value.(A * B) ≈ A_val * B_val
-#     @test value.(A_val * B) ≈ A_val * B_val
-#     @test value.(A * B_val) ≈ A_val * B_val
+    m, n, l = 100, 123, 78
+    X, X_val = get_matrix_pair(rng, model, m, n)
+    Y, Y_val = get_matrix_pair(rng, model, n, l)
+    @test value.(X * Y) ≈ X_val * Y_val
+    @test value.(X_val * Y) ≈ X_val * Y_val
+    @test value.(X * Y_val) ≈ X_val * Y_val
 
-#     n = 100
-#     A, A_val = get_matrix_pair(rng, model, n, n)
-#     @test value(TVESim.tr(A)) ≈ tr(A_val)
+    n = 100
+    X, X_val = get_matrix_pair(rng, model, n, n)
+    @test value(tr(X)) ≈ tr(X_val)
 
 #     n = 7
-#     A, A_val = get_matrix_pair(rng, model, n, n)
-#     @test value(TVESim.det(A)) ≈ det(A_val)
-#     @test value.(A * TVESim.adjugate(A)) ≈ det(A_val) * Matrix(I, n, n)
-# end
+#     X, X_val = get_matrix_pair(rng, model, n, n)
+#     @test value(TVESim.det(X)) ≈ det(X_val)
+#     @test value.(X * TVESim.adjugate(X)) ≈ det(X_val) * Matrix(I, n, n)
+end
