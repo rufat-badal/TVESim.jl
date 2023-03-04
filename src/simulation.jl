@@ -200,6 +200,19 @@ function create_objective!(
             integral_prev_austenite_percentages, prev_strains, strain_rates
         )
     ]
+    
+    JuMP.register(m, :identity, 1, identity; autodiff=true)
+    int_temps = integral(θ, grid.triangles, m)
+    heat_creation_consumption = add_nonlinear_expression(
+        -sum(
+            (d_rate + adiab) * temp
+            for (d_rate, adiab, temp) in zip(
+                dissipation_rates,
+                adiabatic_terms,
+                int_temps,
+            )
+        )
+    )
 end
 
 function get_strains(m, prev_x, prev_y, x, y, grid)
@@ -239,16 +252,18 @@ function get_strain_rates(prev_strains, strains)
 end
 
 function integral(f, x, triangles, m)
-    [integral(f, (x[i1], x[i2], x[i3]), m) for (i1, i2, i3) in triangles]
+    [cell_integral(f, (x[i1], x[i2], x[i3]), m) for (i1, i2, i3) in triangles]
 end
 
-function integral(f, node_values, m)
+function cell_integral(f, node_values, m)
     # It is assumed that f was already registered by the caller
     f_symb = Symbol(f)
     θ1, θ2, θ3 = node_values
     expr = :(($f_symb($(θ1)) + $f_symb($(θ2)) + $f_symb($(θ3))) / 3)
     JuMPExpression(m, expr)
 end
+
+integral(x, triangles, m) = integral(identity, x, triangles, m)
 
 function update!(mechanical_step::MechanicalStep)
     JuMP.set_value.(mechanical_step.prev_x, JuMP.value.(mechanical_step.x))
