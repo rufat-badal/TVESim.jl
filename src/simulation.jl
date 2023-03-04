@@ -134,41 +134,6 @@ function Simulation(
 end
 
 function create_objective!(
-    thermal_step::ThermalStep, grid::SimulationGrid,
-    shape_memory_scaling, heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
-)
-    m = thermal_step.model
-    prev_x = thermal_step.prev_x
-    prev_y = thermal_step.prev_y
-    prev_θ = thermal_step.prev_θ
-    x = thermal_step.x
-    y = thermal_step.y
-    θ = thermal_step.θ
-
-    # recompute strain and strain rate
-    prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
-    strain_rates, symmetrized_strain_rates = get_strain_rates(prev_strains, strains)
-
-    # heat sources and sinks
-    dissipation_rate = norm_sqr.(symmetrized_strain_rates)
-    
-    JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
-    integral_prev_austenite_percentage = integral(austenite_percentage, prev_θ, grid.triangles, m)
-    scaling_matrix = [1/shape_memory_scaling 0; 0 1]
-    adiabatic_term = [
-        dot(
-            a_perc * (
-                gradient_austenite_potential(F)
-                - gradient_martensite_potential(F, scaling_matrix)
-            ), dot_F
-        )
-        for (a_perc, F, dot_F) in zip(
-            integral_prev_austenite_percentage, prev_strains, strain_rates
-        )
-    ]
-end
-
-function create_objective!(
     mechanical_step::MechanicalStep, grid::SimulationGrid,
     shape_memory_scaling::Number, fps::Number
 )
@@ -203,6 +168,41 @@ function create_objective!(
     )
     JuMP.@NLexpression(m, dissipation, 0.5 * sum(d.expression for d in norm_sqr.(symmetrized_strain_rates)))
     JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
+end
+
+function create_objective!(
+    thermal_step::ThermalStep, grid::SimulationGrid,
+    shape_memory_scaling, heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
+)
+    m = thermal_step.model
+    prev_x = thermal_step.prev_x
+    prev_y = thermal_step.prev_y
+    prev_θ = thermal_step.prev_θ
+    x = thermal_step.x
+    y = thermal_step.y
+    θ = thermal_step.θ
+
+    # recompute strain and strain rate
+    prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
+    strain_rates, symmetrized_strain_rates = get_strain_rates(prev_strains, strains)
+
+    # heat sources and sinks
+    dissipation_rate = norm_sqr.(symmetrized_strain_rates)
+    
+    JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
+    integral_prev_austenite_percentage = integral(austenite_percentage, prev_θ, grid.triangles, m)
+    scaling_matrix = [1/shape_memory_scaling 0; 0 1]
+    adiabatic_term = [
+        dot(
+            a_perc * (
+                gradient_austenite_potential(F)
+                - gradient_martensite_potential(F, scaling_matrix)
+            ), dot_F
+        )
+        for (a_perc, F, dot_F) in zip(
+            integral_prev_austenite_percentage, prev_strains, strain_rates
+        )
+    ]
 end
 
 function get_strains(m, prev_x, prev_y, x, y, grid)
