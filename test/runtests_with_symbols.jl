@@ -41,6 +41,11 @@ end
     @test value.(transpose(X)) == transpose(X_val)
     @test value(sum(X .^ 2)) ≈ sum(X_val .^ 2)
 
+    X_val .+= 1
+    X = @NLparameter(model, [i = 1:m, j = 1:n] == X_val[i, j])
+    X = TVESim.jumpexpression_array(model, X)
+    @test value.(log.(X)) ≈ log.(X_val)
+
     Y, Y_val = get_matrix_pair(rng, model, m, n)
     @test value.(X + Y) == X_val + Y_val
     @test value.(X_val + Y) == X_val + Y_val

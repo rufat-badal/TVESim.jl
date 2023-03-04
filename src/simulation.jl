@@ -151,23 +151,20 @@ function create_objective!(
     austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
 
     # objective
-    # scaling_matrix = [1/shape_memory_scaling 0; 0 1]
-    # scaled_strains = [F * scaling_matrix for F in strains]
+    scaling_matrix = [1/shape_memory_scaling 0; 0 1]
+    scaled_strains = [F * scaling_matrix for F in strains]
 
-    # JuMP.@NLexpression(
-    #     m, elastic_energy,
-    #     0.5 * sum(
-    #         a_perc * neo_hook_F + (1 - a_perc) * neo_hook_F_scaled
-    #         for (F, a_perc, neo_hook_F, neo_hook_F_scaled) in zip(
-    #             strains,
-    #             austenite_percentages,
-    #             neo_hook.(strains),
-    #             neo_hook.(scaled_strains)
-    #         )
-    #     )
-    # )
-    # JuMP.@NLexpression(m, dissipation, 0.5 * sum(d.expression for d in norm_sqr.(symmetrized_strain_rates)))
-    # JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
+    elastic_energy = add_nonlinear_expression(0.5 * sum(
+        a_perc * neo_hook(F) + (1 - a_perc) * neo_hook(F_scaled)
+        for (a_perc, F, F_scaled) in zip(
+            austenite_percentages,
+            strains,
+            scaled_strains
+        )
+    ))
+    
+    dissipation = add_nonlinear_expression(0.5 * sum(sum(dot_C .^ 2) for dot_C in symmetrized_strain_rates))
+    JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
 end
 
 function create_objective!(

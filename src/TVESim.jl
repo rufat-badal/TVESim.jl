@@ -6,6 +6,7 @@ export simulate!
 
 import JuMP
 import MadNLP
+import LinearAlgebra
 import LinearAlgebra: tr, transpose, dot
 import CairoMakie
 import Triangulate

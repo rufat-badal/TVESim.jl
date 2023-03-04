@@ -9,6 +9,10 @@ jumpexpression_array(model, X::Array) = [JuMPExpression(model, x) for x in X]
 
 JuMP.value(x::JuMPExpression) = JuMP.value(JuMP.add_nonlinear_expression(x.model, x.expr))
 
+add_nonlinear_expression(x::JuMPExpression) = JuMP.add_nonlinear_expression(x.model, x.expr)
+
+Base.log(x::JuMPExpression) = JuMPExpression(x.model, :(log($(x.expr))))
+
 JuMPExpression(x::Number) = x
 
 Base.zero(::Type{JuMPExpression}) = 0 # needed for LinearAlgebra.tr

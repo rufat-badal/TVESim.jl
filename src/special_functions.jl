@@ -2,12 +2,11 @@ function austenite_percentage(θ)
     return 1 - 1 / (1 + θ)
 end
 
-# function neo_hook(F::Matrix{AdvancedNonlinearExpression})
-#     model = F[1, 1].model
-#     trace_C = tr(transpose(F) * F).expression
-#     det_F = det(F).expression
-#     JuMP.@NLexpression(model, trace_C - 2 - 2 * log(det_F) + (det_F - 1)^2)
-# end
+function neo_hook(F::Matrix{JuMPExpression})
+    trace_C = tr(transpose(F) * F)
+    det_F = det(F)
+    trace_C - 2 - 2 * log(det_F) + (det_F - 1)^2
+end
 
 # function gradient_austenite_potential(F::Matrix{AdvancedNonlinearExpression})
 #     model = F[1, 1].model
