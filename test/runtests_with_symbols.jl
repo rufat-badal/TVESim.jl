@@ -8,7 +8,7 @@ const RNG_SEED = 42
 
 function get_matrix_pair(rng, model, m, n)
     X_val = rand(rng, m, n)
-    X = @NLparameter(model, [i=1:m, j=1:n] == X_val[i, j])
+    X = @NLparameter(model, [i = 1:m, j = 1:n] == X_val[i, j])
     TVESim.jumpexpression_array(model, X), X_val
 end
 
@@ -63,8 +63,8 @@ end
     X, X_val = get_matrix_pair(rng, model, n, n)
     @test value(tr(X)) ≈ tr(X_val)
 
-#     n = 7
-#     X, X_val = get_matrix_pair(rng, model, n, n)
-#     @test value(TVESim.det(X)) ≈ det(X_val)
-#     @test value.(X * TVESim.adjugate(X)) ≈ det(X_val) * Matrix(I, n, n)
+    n = 7
+    X, X_val = get_matrix_pair(rng, model, n, n)
+    @test value(TVESim.det(X)) ≈ det(X_val)
+    #     @test value.(X * TVESim.adjugate(X)) ≈ det(X_val) * Matrix(I, n, n)
 end

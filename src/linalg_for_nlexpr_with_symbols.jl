@@ -53,3 +53,63 @@ Base.:/(X::Matrix{JuMPExpression}, λ::JuMP.AbstractJuMPScalar) = [x / λ for x 
 LinearAlgebra.dot(x::JuMPExpression, y::JuMPExpression) = x * y
 LinearAlgebra.dot(x, y::JuMPExpression) = x * y
 LinearAlgebra.dot(x::JuMPExpression, y) = x * y
+
+function checksquare(A)
+    m, n = size(A)
+    m == n || throw(DimensionMismatch("operation does not support non-square matrices, matrix has size $(size(A))"))
+    return m
+end
+
+function minor(X::Matrix{T}, i, j) where T
+    m, n = size(X)
+
+    (1 <= i <= m && 1 <= j <= n) || throw(ArgumentError("minor indices not in the correct range, current values: ($i, $j)"))
+
+    Xminor = Matrix{T}(undef, m - 1, n - 1)
+    if m == 1 || n == 1
+        return Xminor
+    end
+
+    for Xminor_col in 1:j-1
+        for Xminor_row in 1:i-1
+            Xminor[Xminor_row, Xminor_col] = X[Xminor_row, Xminor_col]
+        end
+        for Xminor_row in i:m-1
+            Xminor[Xminor_row, Xminor_col] = X[Xminor_row+1, Xminor_col]
+        end
+    end
+    for Xminor_col in j:n-1
+        for Xminor_row in 1:i-1
+            Xminor[Xminor_row, Xminor_col] = X[Xminor_row, Xminor_col+1]
+        end
+        for Xminor_row in i:m-1
+            Xminor[Xminor_row, Xminor_col] = X[Xminor_row+1, Xminor_col+1]
+        end
+    end
+
+    Xminor
+end
+
+function det(X::Matrix{JuMPExpression})
+    n = checksquare(X)
+
+    if n == 1
+        return X[1, 1]
+    elseif n == 2
+        return X[1, 1] * X[2, 2] - X[2, 1] * X[1, 2]
+    end
+
+    det_X = zero(JuMPExpression)
+
+    for j in 1:n
+        det_minor = det(minor(X, 1, j))
+
+        if isodd(j)
+            det_X = det_X + X[1, j] * det_minor
+        else
+            det_X = det_X - X[1, j] * det_minor
+        end
+    end
+
+    det_X
+end
