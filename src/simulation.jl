@@ -98,11 +98,11 @@ function Simulation(
     deformation_search_radius = 1.1 * shape_memory_scaling * max(width, height)
 
     mechanical_step = MechanicalStep(grid, deformation_search_radius)
-    # x = JuMP.value.(mechanical_step.prev_x)
-    # y = JuMP.value.(mechanical_step.prev_y)
-    # θ = JuMP.value.(mechanical_step.prev_θ)
-    # steps = [SimulationStep(x, y, θ)]
-    # create_objective!(mechanical_step, grid, shape_memory_scaling, fps)
+    x = JuMP.value.(mechanical_step.prev_x)
+    y = JuMP.value.(mechanical_step.prev_y)
+    θ = JuMP.value.(mechanical_step.prev_θ)
+    steps = [SimulationStep(x, y, θ)]
+    create_objective!(mechanical_step, grid, shape_memory_scaling, fps)
     # JuMP.optimize!(mechanical_step.model)
 
     # temperature_search_radius = initial_temperature + 10
@@ -146,28 +146,28 @@ function create_objective!(
 
     # compute strains and symmetrized strain-rates
     prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
-    symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
-    JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
-    austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
+    # symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
+    # JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
+    # austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
 
     # objective
-    scaling_matrix = [1/shape_memory_scaling 0; 0 1]
-    scaled_strains = [F * scaling_matrix for F in strains]
+    # scaling_matrix = [1/shape_memory_scaling 0; 0 1]
+    # scaled_strains = [F * scaling_matrix for F in strains]
 
-    JuMP.@NLexpression(
-        m, elastic_energy,
-        0.5 * sum(
-            a_perc * neo_hook_F + (1 - a_perc) * neo_hook_F_scaled
-            for (F, a_perc, neo_hook_F, neo_hook_F_scaled) in zip(
-                strains,
-                austenite_percentages,
-                neo_hook.(strains),
-                neo_hook.(scaled_strains)
-            )
-        )
-    )
-    JuMP.@NLexpression(m, dissipation, 0.5 * sum(d.expression for d in norm_sqr.(symmetrized_strain_rates)))
-    JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
+    # JuMP.@NLexpression(
+    #     m, elastic_energy,
+    #     0.5 * sum(
+    #         a_perc * neo_hook_F + (1 - a_perc) * neo_hook_F_scaled
+    #         for (F, a_perc, neo_hook_F, neo_hook_F_scaled) in zip(
+    #             strains,
+    #             austenite_percentages,
+    #             neo_hook.(strains),
+    #             neo_hook.(scaled_strains)
+    #         )
+    #     )
+    # )
+    # JuMP.@NLexpression(m, dissipation, 0.5 * sum(d.expression for d in norm_sqr.(symmetrized_strain_rates)))
+    # JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
 end
 
 function create_objective!(
@@ -206,13 +206,22 @@ function create_objective!(
 end
 
 function get_strains(m, prev_x, prev_y, x, y, grid)
-    prev_triangles = [[nlexpr_vector(m, [prev_x[i], prev_y[i]]) for i in T] for T in grid.triangles]
-    triangles = [[nlexpr_vector(m, [x[i], y[i]]) for i in T] for T in grid.triangles]
+    prev_triangles = [[jumpexpression_array(m, [prev_x[i], prev_y[i]]) for i in T] for T in grid.triangles]
+    triangles = [[jumpexpression_array(m, [x[i], y[i]]) for i in T] for T in grid.triangles]
     reference_triangles = [[[grid.x[i], grid.y[i]] for i in T] for T in grid.triangles]
     prev_strains = strain.(zip(prev_triangles, reference_triangles))
     strains = strain.(zip(triangles, reference_triangles))
 
     prev_strains, strains
+end
+
+function strain((triangle, reference_triangle))
+    a, b, c = reference_triangle
+    gradient_equilateral_to_reference = [b - a c - a]
+    a, b, c = triangle
+    gradient_equilateral_to_current = [b - a c - a]
+
+    gradient_equilateral_to_current * inv(gradient_equilateral_to_reference)
 end
 
 function get_symmetrized_strain_rates(prev_strains, strains)
@@ -242,15 +251,6 @@ function integral(f, node_values, m)
     θ1, θ2, θ3 = node_values
     expr = :(($f_symb($(θ1)) + $f_symb($(θ2)) + $f_symb($(θ3))) / 3)
     JuMP.add_nonlinear_expression(m, expr)
-end
-
-function strain((triangle, reference_triangle))
-    a, b, c = reference_triangle
-    gradient_equilateral_to_reference = [b - a c - a]
-    a, b, c = triangle
-    gradient_equilateral_to_current = [b - a c - a]
-
-    gradient_equilateral_to_current * inv(gradient_equilateral_to_reference)
 end
 
 function update!(mechanical_step::MechanicalStep)
