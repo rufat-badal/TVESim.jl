@@ -21,6 +21,8 @@ Base.iterate(x::JuMPExpression, ::Any) = nothing
 
 Base.transpose(x::JuMPExpression) = x
 
+Base.copy(x::JuMPExpression) = x
+
 Base.:^(x::JuMPExpression, power::Integer) = JuMPExpression(x.model, :($(x.expr)^$(power)))
 
 Base.:-(x::JuMPExpression) = JuMPExpression(x.model, :(-$(x.expr)))

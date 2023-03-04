@@ -146,7 +146,7 @@ function create_objective!(
 
     # compute strains and symmetrized strain-rates
     prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
-    # symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
+    symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
     # JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
     # austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
 
