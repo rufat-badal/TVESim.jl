@@ -147,8 +147,8 @@ function create_objective!(
     # compute strains and symmetrized strain-rates
     prev_strains, strains = get_strains(m, prev_x, prev_y, x, y, grid)
     symmetrized_strain_rates = get_symmetrized_strain_rates(prev_strains, strains)
-    # JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
-    # austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
+    JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
+    austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
 
     # objective
     # scaling_matrix = [1/shape_memory_scaling 0; 0 1]
@@ -250,7 +250,7 @@ function integral(f, node_values, m)
     f_symb = Symbol(f)
     θ1, θ2, θ3 = node_values
     expr = :(($f_symb($(θ1)) + $f_symb($(θ2)) + $f_symb($(θ3))) / 3)
-    JuMP.add_nonlinear_expression(m, expr)
+    JuMPExpression(m, expr)
 end
 
 function update!(mechanical_step::MechanicalStep)
