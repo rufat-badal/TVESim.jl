@@ -8,15 +8,13 @@ function neo_hook(F::Matrix{JuMPExpression})
     trace_C - 2 - 2 * log(det_F) + (det_F - 1)^2
 end
 
-# function gradient_austenite_potential(F::Matrix{AdvancedNonlinearExpression})
-#     model = F[1, 1].model
-#     det_F = det(F).expression
-#     scaling = JuMP.@NLexpression(model, det_F - 1 / det_F - 1)
-#     det_gradient = [F[2, 2] -F[2, 1]; -F[1, 2] F[1, 1]]
-#     2 * (F + scaling * det_gradient)
-# end
+function gradient_austenite_potential(F::Matrix{JuMPExpression})
+    det_F = det(F)
+    gradient_det = [F[2, 2] -F[2, 1]; -F[1, 2] F[1, 1]]
+    2 * (F + (det_F - 1 / det_F - 1) * gradient_det)
+end
 
-# function gradient_martensite_potential(F::Matrix{AdvancedNonlinearExpression}, scaling_matrix::Matrix)
-#     # chain rule
-#     gradient_austenite_potential(F * scaling_matrix) * transpose(scaling_matrix)
-# end
+function gradient_martensite_potential(F::Matrix{JuMPExpression}, scaling_matrix::Matrix)
+    # chain rule
+    gradient_austenite_potential(F * scaling_matrix) * transpose(scaling_matrix)
+end

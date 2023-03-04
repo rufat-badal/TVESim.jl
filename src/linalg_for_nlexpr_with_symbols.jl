@@ -56,6 +56,8 @@ Base.:*(X::Matrix{JuMPExpression}, λ::JuMP.AbstractJuMPScalar) = [x * λ for x 
 Base.:/(X::Matrix{JuMPExpression}, λ::JuMPExpression) = [x / λ for x in X]
 Base.:/(X::Matrix{JuMPExpression}, λ::JuMP.AbstractJuMPScalar) = [x / λ for x in X]
 
+norm_sqr(X::Matrix{JuMPExpression}) = sum(X .^ 2)
+
 LinearAlgebra.dot(x::JuMPExpression, y::JuMPExpression) = x * y
 LinearAlgebra.dot(x, y::JuMPExpression) = x * y
 LinearAlgebra.dot(x::JuMPExpression, y) = x * y

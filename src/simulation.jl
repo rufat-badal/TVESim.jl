@@ -103,34 +103,34 @@ function Simulation(
     θ = JuMP.value.(mechanical_step.prev_θ)
     steps = [SimulationStep(x, y, θ)]
     create_objective!(mechanical_step, grid, shape_memory_scaling, fps)
-    # JuMP.optimize!(mechanical_step.model)
+    JuMP.optimize!(mechanical_step.model)
 
-    # temperature_search_radius = initial_temperature + 10
-    # thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
-    # create_objective!(
-    #     thermal_step, grid, shape_memory_scaling,
-    #     heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
-    # )
+    temperature_search_radius = initial_temperature + 10
+    thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
+    create_objective!(
+        thermal_step, grid, shape_memory_scaling,
+        heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
+    )
 
-    # x = JuMP.value.(mechanical_step.x)
-    # y = JuMP.value.(mechanical_step.y)
-    # θ = JuMP.value.(mechanical_step.prev_θ)
-    # push!(steps, SimulationStep(x, y, θ))
+    x = JuMP.value.(mechanical_step.x)
+    y = JuMP.value.(mechanical_step.y)
+    θ = JuMP.value.(mechanical_step.prev_θ)
+    push!(steps, SimulationStep(x, y, θ))
 
-    # Simulation(
-    #     grid,
-    #     deformation_search_radius,
-    #     temperature_search_radius,
-    #     shape_memory_scaling,
-    #     initial_temperature,
-    #     fps,
-    #     heat_transfer_coefficient,
-    #     heat_conductivity,
-    #     entropic_heat_capacity,
-    #     external_temperature,
-    #     mechanical_step,
-    #     steps
-    # )
+    Simulation(
+        grid,
+        deformation_search_radius,
+        temperature_search_radius,
+        shape_memory_scaling,
+        initial_temperature,
+        fps,
+        heat_transfer_coefficient,
+        heat_conductivity,
+        entropic_heat_capacity,
+        external_temperature,
+        mechanical_step,
+        steps
+    )
 end
 
 function create_objective!(
@@ -163,7 +163,7 @@ function create_objective!(
         )
     ))
     
-    dissipation = add_nonlinear_expression(0.5 * sum(sum(dot_C .^ 2) for dot_C in symmetrized_strain_rates))
+    dissipation = add_nonlinear_expression(0.5 * sum(norm_sqr(dot_C) for dot_C in symmetrized_strain_rates))
     JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
 end
 
@@ -184,12 +184,12 @@ function create_objective!(
     strain_rates, symmetrized_strain_rates = get_strain_rates(prev_strains, strains)
 
     # heat sources and sinks
-    dissipation_rate = norm_sqr.(symmetrized_strain_rates)
+    dissipation_rates = norm_sqr.(symmetrized_strain_rates)
     
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
-    integral_prev_austenite_percentage = integral(austenite_percentage, prev_θ, grid.triangles, m)
+    integral_prev_austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
     scaling_matrix = [1/shape_memory_scaling 0; 0 1]
-    adiabatic_term = [
+    adiabatic_terms = [
         dot(
             a_perc * (
                 gradient_austenite_potential(F)
@@ -197,7 +197,7 @@ function create_objective!(
             ), dot_F
         )
         for (a_perc, F, dot_F) in zip(
-            integral_prev_austenite_percentage, prev_strains, strain_rates
+            integral_prev_austenite_percentages, prev_strains, strain_rates
         )
     ]
 end

@@ -39,7 +39,7 @@ end
     @test value.(X / λ) == X_val / λ_val
     @test value.(X / λ.expr) == X_val / λ_val
     @test value.(transpose(X)) == transpose(X_val)
-    @test value(sum(X .^ 2)) ≈ sum(X_val .^ 2)
+    @test value(TVESim.norm_sqr(X)) ≈ sum(X_val .^ 2)
 
     X_val .+= 1
     X = @NLparameter(model, [i = 1:m, j = 1:n] == X_val[i, j])
