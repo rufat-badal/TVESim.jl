@@ -281,16 +281,16 @@ function get_strain_rates(prev_strains, strains)
     strain_rates, symmetrized_strain_rates
 end
 
-function integral(f, x, triangles, m)
-    [cell_integral(f, (x[i1], x[i2], x[i3]), m) for (i1, i2, i3) in triangles]
+function integral(f::Function, x, triangles, model::JuMP.Model)
+    [integral(f, (x[i1], x[i2], x[i3]), model) for (i1, i2, i3) in triangles]
 end
 
-function cell_integral(f, node_values, m)
+function integral(f::Function, x, model::JuMP.Model)
     # It is assumed that f was already registered by the caller
     f_symb = Symbol(f)
-    θ1, θ2, θ3 = node_values
-    expr = :(($f_symb($(θ1)) + $f_symb($(θ2)) + $f_symb($(θ3))) / 3)
-    JuMPExpression(m, expr)
+    x1, x2, x3 = x
+    expr = :(($f_symb($(x1)) + $f_symb($(x2)) + $f_symb($(x3))) / 3)
+    JuMPExpression(model, expr)
 end
 
 integral(x, triangles, m) = integral(identity, x, triangles, m)
