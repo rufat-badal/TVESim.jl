@@ -192,9 +192,7 @@ function create_objective!(
     adiabatic_terms = [
         dot(
             a_perc_term * (
-                gradient_austenite_potential(prev_F)
-                -
-                gradient_martensite_potential(prev_F, scaling_matrix)
+                gradient_austenite_potential(prev_F) - gradient_martensite_potential(prev_F, scaling_matrix)
             ), dot_F
         )
         for (a_perc_term, prev_F, dot_F) in zip(
