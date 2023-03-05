@@ -187,60 +187,59 @@ function create_objective!(
     dissipation_rates = norm_sqr.(symmetrized_strain_rates)
 
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
-    integral_prev_austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
     scaling_matrix = [1/shape_memory_scaling 0; 0 1]
     adiabatic_terms = [
         dot(
             a_perc * (
-                gradient_austenite_potential(F)
+                gradient_austenite_potential(prev_F)
                 -
-                gradient_martensite_potential(F, scaling_matrix)
+                gradient_martensite_potential(prev_F, scaling_matrix)
             ), dot_F
         )
-        for (a_perc, F, dot_F) in zip(
-            integral_prev_austenite_percentages, prev_strains, strain_rates
+        for (a_perc, prev_F, dot_F) in zip(
+            integral(austenite_percentage, prev_θ, grid.triangles, m),
+            prev_strains,
+            strain_rates
         )
     ]
 
     JuMP.register(m, :identity, 1, identity; autodiff=true)
-    int_temps = integral(θ, grid.triangles, m)
+    # FIXME: needs scalar product!
     heat_creation_consumption = add_nonlinear_expression(
         -sum(
             (d_rate + adiab) * temp
             for (d_rate, adiab, temp) in zip(
                 dissipation_rates,
                 adiabatic_terms,
-                int_temps,
+                integral(θ, grid.triangles, m),
             )
         )
     )
 
-    int_prev_temps = integral(prev_θ, grid.triangles, m)
+    # dissipation
     JuMP.register(m, :internal_energy_weight, 1, internal_energy_weight; autodiff=true)
-    int_internal_energy_weights = integral(internal_energy_weight, θ, grid.triangles, m)
-    prev_internal_energies = [
+    antider_prev_internal_energies = [
         weight * (
             austenite_potential(prev_F) - martensite_potential(prev_F, scaling_matrix)
-        ) + entropic_heat_capacity * temp
-        for (weight, prev_F, temp) in zip(
-            int_internal_energy_weights,
+        ) + entropic_heat_capacity * entropy_term
+        for (weight, prev_F, entropy_term) in zip(
+            scalar_product(internal_energy_weight, prev_θ, θ, grid.triangles, m),
             prev_strains,
-            int_prev_temps
+            scalar_product(prev_θ, θ, grid.triangles, m)
         )
     ]
 
     square(x) = x^2
-    int_square_temps = integral(square, θ, grid.triangles, m)
+    JuMP.register(m, :square, 1, square; autodiff=true)
     JuMP.register(m, :antider_internal_energy_weight, 1, antider_internal_energy_weight; autodiff=true)
-    antider_internal_energy_weights = integral(antider_internal_energy_weight, θ, grid.triangles, m)
     antider_internal_energies = [
         antider_weight * (
             austenite_potential(F) - martensite_potential(F, scaling_matrix)
         ) + entropic_heat_capacity / 2 * temp_squared
         for (antider_weight, F, temp_squared) in zip(
-            antider_internal_energy_weights,
+            integral(antider_internal_energy_weight, θ, grid.triangles, m),
             strains,
-            int_square_temps
+            integral(square, θ, grid.triangles, m)
         )
     ]
 end
@@ -282,11 +281,11 @@ function get_strain_rates(prev_strains, strains)
 end
 
 function integral(f::Function, x, triangles, model::JuMP.Model)
+    # It is assumed that f was already registered by the caller
     [integral(f, (x[i1], x[i2], x[i3]), model) for (i1, i2, i3) in triangles]
 end
 
 function integral(f::Function, x, model::JuMP.Model)
-    # It is assumed that f was already registered by the caller
     f_symb = Symbol(f)
     x1, x2, x3 = x
     expr = :(($f_symb($(x1)) + $f_symb($(x2)) + $f_symb($(x3))) / 3)
@@ -294,6 +293,34 @@ function integral(f::Function, x, model::JuMP.Model)
 end
 
 integral(x, triangles, m) = integral(identity, x, triangles, m)
+
+function scalar_product(f::Function, x, g::Function, y, triangles, model::JuMP.Model)
+    # It is assumed that f and g were already registered by the caller
+    [
+        scalar_product(f, (x[i1], x[i2], x[i3]), g, (y[i1], y[i2], y[i3]), model)
+        for (i1, i2, i3) in triangles
+    ]
+end
+
+function scalar_product(f::Function, x, g::Function, y, model::JuMP.Model)
+    f_symb = Symbol(f)
+    x1, x2, x3 = x
+    g_symb = Symbol(g)
+    y1, y2, y3 = y
+
+    expr = :(
+        (
+            $f_symb($(x1)) * $g_symb($(y1))
+            + $f_symb($(x2)) * $g_symb($(y2))
+            + $f_symb($(x3)) * $g_symb($(y3))
+        ) / 3
+    )
+    JuMPExpression(model, expr)
+end
+
+scalar_product(x, y, triangles, model::JuMP.Model) = scalar_product(identity, x, identity, y, triangles, model)
+scalar_product(f::Function, x, y, triangles, model::JuMP.Model) = scalar_product(f, x, identity, y, triangles, model)
+scalar_product(x, g::Function, y, triangles, model::JuMP.Model) = scalar_product(identity, x, g, y, triangles, model)
 
 function update!(mechanical_step::MechanicalStep)
     JuMP.set_value.(mechanical_step.prev_x, JuMP.value.(mechanical_step.x))

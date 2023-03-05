@@ -10,6 +10,7 @@ isdirichlet(x, y) = x - radius <= -radius * cos(dirichlet_arc_angle / 360 * 2pi)
 grid = SimulationGrid(TVESim.circle_boundary_points(radius, num_boundary_points), initial_temperature, isdirichlet)
 # display(TVESim.plot(grid, (0, 1), show_edges=true))
 simulation = Simulation(grid, fps=0.1)
+;
 # width = 10
 # height = 10
 # isinternal(x, y) = 1 <= x <= width + 1 && 1 <= y <= height + 1
