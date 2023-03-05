@@ -214,7 +214,7 @@ function create_objective!(
             )
         )
     )
-    
+
     int_prev_temps = integral(prev_θ, grid.triangles, m)
     JuMP.register(m, :internal_energy_weight, 1, internal_energy_weight; autodiff=true)
     int_internal_energy_weights = integral(internal_energy_weight, θ, grid.triangles, m)
@@ -226,6 +226,21 @@ function create_objective!(
             int_internal_energy_weights,
             prev_strains,
             int_prev_temps
+        )
+    ]
+
+    square(x) = x^2
+    int_square_temps = integral(square, θ, grid.triangles, m)
+    JuMP.register(m, :antider_internal_energy_weight, 1, antider_internal_energy_weight; autodiff=true)
+    antider_internal_energy_weights = integral(antider_internal_energy_weight, θ, grid.triangles, m)
+    antider_internal_energies = [
+        antider_weight * (
+            austenite_potential(F) - martensite_potential(F, scaling_matrix)
+        ) + entropic_heat_capacity / 2 * temp_squared
+        for (antider_weight, F, temp_squared) in zip(
+            antider_internal_energy_weights,
+            strains,
+            int_square_temps
         )
     ]
 end

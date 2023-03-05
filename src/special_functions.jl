@@ -27,3 +27,9 @@ function internal_energy_weight(θ)
     # a(θ) - θ a'(θ)
     θ^2 / (1 + θ)^2
 end
+
+function antider_internal_energy_weight(θ)
+    # a = austenite_percentage
+    # integral of a(s) - s a'(s) from s = 0 to s = θ
+    (θ * (2 + θ)) / (1 + θ) - 2 * log(1 + θ)
+end
