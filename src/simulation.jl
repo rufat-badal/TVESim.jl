@@ -162,7 +162,7 @@ function create_objective!(
             scaled_strains
         )
     ))
-    
+
     dissipation = add_nonlinear_expression(0.5 * sum(norm_sqr(dot_C) for dot_C in symmetrized_strain_rates))
     JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
 end
@@ -185,7 +185,7 @@ function create_objective!(
 
     # heat sources and sinks
     dissipation_rates = norm_sqr.(symmetrized_strain_rates)
-    
+
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
     integral_prev_austenite_percentages = integral(austenite_percentage, prev_θ, grid.triangles, m)
     scaling_matrix = [1/shape_memory_scaling 0; 0 1]
@@ -193,14 +193,15 @@ function create_objective!(
         dot(
             a_perc * (
                 gradient_austenite_potential(F)
-                - gradient_martensite_potential(F, scaling_matrix)
+                -
+                gradient_martensite_potential(F, scaling_matrix)
             ), dot_F
         )
         for (a_perc, F, dot_F) in zip(
             integral_prev_austenite_percentages, prev_strains, strain_rates
         )
     ]
-    
+
     JuMP.register(m, :identity, 1, identity; autodiff=true)
     int_temps = integral(θ, grid.triangles, m)
     heat_creation_consumption = add_nonlinear_expression(
@@ -213,6 +214,20 @@ function create_objective!(
             )
         )
     )
+    
+    int_prev_temps = integral(prev_θ, grid.triangles, m)
+    JuMP.register(m, :internal_energy_weight, 1, internal_energy_weight; autodiff=true)
+    int_internal_energy_weights = integral(internal_energy_weight, θ, grid.triangles, m)
+    prev_internal_energies = [
+        weight * (
+            austenite_potential(prev_F) - martensite_potential(prev_F, scaling_matrix)
+        ) + entropic_heat_capacity * temp
+        for (weight, prev_F, temp) in zip(
+            int_internal_energy_weights,
+            prev_strains,
+            int_prev_temps
+        )
+    ]
 end
 
 function get_strains(m, prev_x, prev_y, x, y, grid)
