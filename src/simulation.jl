@@ -186,32 +186,31 @@ function create_objective!(
     # heat sources and sinks
     dissipation_rates = norm_sqr.(symmetrized_strain_rates)
 
-    JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
     scaling_matrix = [1/shape_memory_scaling 0; 0 1]
+    JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
+    JuMP.register(m, :identity, 1, identity; autodiff=true)
     adiabatic_terms = [
         dot(
-            a_perc * (
+            a_perc_term * (
                 gradient_austenite_potential(prev_F)
                 -
                 gradient_martensite_potential(prev_F, scaling_matrix)
             ), dot_F
         )
-        for (a_perc, prev_F, dot_F) in zip(
-            integral(austenite_percentage, prev_θ, grid.triangles, m),
+        for (a_perc_term, prev_F, dot_F) in zip(
+            scalar_product(austenite_percentage, prev_θ, θ, grid.triangles, m),
             prev_strains,
             strain_rates
         )
     ]
 
-    JuMP.register(m, :identity, 1, identity; autodiff=true)
-    # FIXME: needs scalar product!
     heat_creation_consumption = add_nonlinear_expression(
         -sum(
-            (d_rate + adiab) * temp
-            for (d_rate, adiab, temp) in zip(
+            d_rate * temp + adiab
+            for (d_rate, temp, adiab) in zip(
                 dissipation_rates,
-                adiabatic_terms,
                 integral(θ, grid.triangles, m),
+                adiabatic_terms,
             )
         )
     )
