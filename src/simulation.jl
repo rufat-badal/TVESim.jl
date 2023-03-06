@@ -111,10 +111,11 @@ function Simulation(
         thermal_step, grid, shape_memory_scaling,
         heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature, fps
     )
+    JuMP.optimize!(thermal_step.model)
 
     x = JuMP.value.(mechanical_step.x)
     y = JuMP.value.(mechanical_step.y)
-    θ = JuMP.value.(mechanical_step.prev_θ)
+    θ = JuMP.value.(thermal_step.θ)
     push!(steps, SimulationStep(x, y, θ))
 
     Simulation(
