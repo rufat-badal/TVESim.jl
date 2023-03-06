@@ -14,7 +14,7 @@ struct MechanicalStep
 end
 
 function MechanicalStep(grid::SimulationGrid, search_rad::Number)
-    m = JuMP.Model(() -> MadNLP.Optimizer(print_level=MadNLP.WARN, blas_num_threads=16))
+    m = JuMP.Model(() -> MadNLP.Optimizer(print_level=MadNLP.WARN, blas_num_threads=8))
 
     # previous steps
     num_vertices = grid.num_vertices
@@ -80,6 +80,7 @@ struct Simulation
     entropic_heat_capacity::Number
     external_temperature::Number
     mechanical_step::MechanicalStep
+    thermal_step::ThermalStep
     steps::Vector{SimulationStep}
 end
 
@@ -130,6 +131,7 @@ function Simulation(
         entropic_heat_capacity,
         external_temperature,
         mechanical_step,
+        thermal_step,
         steps
     )
 end
@@ -388,19 +390,36 @@ scalar_product(x, y, grid, model::JuMP.Model) = scalar_product(identity, x, iden
 scalar_product(f::Function, x, y, grid, model::JuMP.Model) = scalar_product(f, x, identity, y, grid, model)
 scalar_product(x, g::Function, y, grid, model::JuMP.Model) = scalar_product(identity, x, g, y, grid, model)
 
-function update!(mechanical_step::MechanicalStep)
+function update_mechanical_step!(simulation::Simulation)
+    mechanical_step = simulation.mechanical_step
+    thermal_step = simulation.thermal_step
+    JuMP.set_value.(mechanical_step.prev_θ, JuMP.value.(thermal_step.θ))
     JuMP.set_value.(mechanical_step.prev_x, JuMP.value.(mechanical_step.x))
     JuMP.set_value.(mechanical_step.prev_y, JuMP.value.(mechanical_step.y))
+end
+
+function update_thermal_step!(simulation::Simulation)
+    mechanical_step = simulation.mechanical_step
+    thermal_step = simulation.thermal_step
+    JuMP.set_value.(thermal_step.prev_x, JuMP.value.(mechanical_step.prev_x))
+    JuMP.set_value.(thermal_step.prev_y, JuMP.value.(mechanical_step.prev_y))
+    JuMP.set_value.(thermal_step.x, JuMP.value.(mechanical_step.x))
+    JuMP.set_value.(thermal_step.y, JuMP.value.(mechanical_step.y))
+    JuMP.set_value.(thermal_step.prev_θ, JuMP.value.(thermal_step.θ))
 end
 
 function solve!(mechanical_step::MechanicalStep)
     JuMP.optimize!(mechanical_step.model)
 end
 
+function solve!(thermal_step::ThermalStep)
+    JuMP.optimize!(thermal_step.model)
+end
+
 function append_step!(simulation::Simulation)
     x = JuMP.value.(simulation.mechanical_step.x)
     y = JuMP.value.(simulation.mechanical_step.y)
-    θ = JuMP.value.(simulation.mechanical_step.prev_θ)
+    θ = JuMP.value.(simulation.thermal_step.θ)
     push!(simulation.steps, SimulationStep(x, y, θ))
 end
 
@@ -411,8 +430,10 @@ function simulate!(simulation::Simulation, num_steps=1)
     end
 
     for _ in steps
-        update!(simulation.mechanical_step)
+        update_mechanical_step!(simulation)
         solve!(simulation.mechanical_step)
+        update_thermal_step!(simulation)
+        solve!(simulation.thermal_step)
         append_step!(simulation)
     end
 end
@@ -446,8 +467,8 @@ function plot(step::SimulationStep, triangles)
             min_x - horizontal_padding, max_x + vertical_padding,
             min_y - horizontal_padding, max_y + horizontal_padding),
         aspect=aspect)
-    # CairoMakie.hidedecorations!(ax)
-    # CairoMakie.hidespines!(ax)
+    CairoMakie.hidedecorations!(ax)
+    CairoMakie.hidespines!(ax)
     CairoMakie.poly!(vertex_coords, faces, color=:transparent, strokewidth=strokewidth, shading=true)
 
     fig
