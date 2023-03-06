@@ -1,244 +1,66 @@
-struct AdvancedNonlinearExpression
+struct JuMPExpression
     model::JuMP.Model
-    expression::JuMP.NonlinearExpression
+    expr
 end
 
-function JuMP.value(x::AdvancedNonlinearExpression)
-    JuMP.value(x.expression)
-end
+Base.show(io::IO, x::JuMPExpression) = show(io, x.expr)
 
-function AdvancedNonlinearExpression(model::JuMP.Model, val)
-    AdvancedNonlinearExpression(
-        model,
-        JuMP.@NLexpression(model, val)
-    )
-end
+jumpexpression_array(model, X::Array) = [JuMPExpression(model, x) for x in X]
 
-function Base.show(io::IO, x::AdvancedNonlinearExpression)
-    show(io, x.expression)
-end
+JuMP.value(x::JuMPExpression) = JuMP.value(JuMP.add_nonlinear_expression(x.model, x.expr))
 
-function Base.:-(x::AdvancedNonlinearExpression)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, -x.expression))
-end
+add_nonlinear_expression(x::JuMPExpression) = JuMP.add_nonlinear_expression(x.model, x.expr)
 
-function checkmodelmatch(x, y)
-    x.model == y.model || throw(ArgumentError("nonlinear expressions belong to different models"))
-end
+Base.log(x::JuMPExpression) = JuMPExpression(x.model, :(log($(x.expr))))
 
-function Base.:+(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
-    checkmodelmatch(x, y)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression + y.expression))
-end
+JuMPExpression(x::Number) = x
 
-function Base.:+(x::AdvancedNonlinearExpression, y)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression + y))
-end
+Base.zero(::Type{JuMPExpression}) = 0 # needed for LinearAlgebra.tr
+Base.zero(x::JuMPExpression) = JuMPExpression(x.model, 0) # needed for LinearAlgebra.dot
 
-function Base.:+(x, y::AdvancedNonlinearExpression)
-    y + x
-end
+Base.length(x::JuMPExpression) = 1
 
-function Base.:-(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
-    checkmodelmatch(x, y)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression - y.expression))
-end
+Base.iterate(x::JuMPExpression) = (x, nothing)
+Base.iterate(x::JuMPExpression, ::Any) = nothing
 
-function Base.:-(x::AdvancedNonlinearExpression, y)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression - y))
-end
+Base.transpose(x::JuMPExpression) = x
 
-function Base.:-(x, y::AdvancedNonlinearExpression)
-    AdvancedNonlinearExpression(y.model, JuMP.@NLexpression(y.model, x - y.expression))
-end
+Base.copy(x::JuMPExpression) = x
 
-function Base.:*(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
-    checkmodelmatch(x, y)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression * y.expression))
-end
+Base.:^(x::JuMPExpression, power::Integer) = JuMPExpression(x.model, :($(x.expr)^$(power)))
 
-function Base.:*(x::AdvancedNonlinearExpression, y)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, y * x.expression))
-end
+Base.:-(x::JuMPExpression) = JuMPExpression(x.model, :(-$(x.expr)))
+Base.inv(x::JuMPExpression) = sJuMPExpression(x.model, :(1 / $(x.expr)))
 
-function Base.:*(x, y::AdvancedNonlinearExpression)
-    y * x
-end
+Base.:+(x::JuMPExpression, y::JuMPExpression) = JuMPExpression(x.model, :($(x.expr) + $(y.expr)))
+Base.:+(x::JuMPExpression, y) = JuMPExpression(x.model, :($(x.expr) + $(y)))
+Base.:+(x, y::JuMPExpression) = JuMPExpression(y.model, :($(x) + $(y.expr)))
 
-function Base.:*(scalar::AdvancedNonlinearExpression, X::Matrix{AdvancedNonlinearExpression})
-    m, n = size(X)
-    [scalar * X[i, j] for i in 1:m, j in 1:n]
-end
+Base.:-(x::JuMPExpression, y::JuMPExpression) = JuMPExpression(x.model, :($(x.expr) - $(y.expr)))
+Base.:-(x::JuMPExpression, y) = JuMPExpression(x.model, :($(x.expr) - $(y)))
+Base.:-(x, y::JuMPExpression) = JuMPExpression(y.model, :($(x) - $(y.expr)))
 
-function Base.:*(X::Matrix{AdvancedNonlinearExpression}, scalar::AdvancedNonlinearExpression)
-    scalar * X
-end
+Base.:*(x::JuMPExpression, y::JuMPExpression) = JuMPExpression(x.model, :($(x.expr) * $(y.expr)))
+Base.:*(x::JuMPExpression, y) = JuMPExpression(x.model, :($(x.expr) * $(y)))
+Base.:*(x, y::JuMPExpression) = JuMPExpression(y.model, :($(x) * $(y.expr)))
 
-function Base.:*(scalar::JuMP.NonlinearExpression, X::Matrix{AdvancedNonlinearExpression})
-    model = X[1, 1].model
-    m, n = size(X)
-    [
-        AdvancedNonlinearExpression(
-            model,
-            JuMP.@NLexpression(model, scalar * X[i, j].expression)
-        )
-        for i in 1:m, j in 1:n
-    ]
-end
+Base.:/(x::JuMPExpression, y::JuMPExpression) = JuMPExpression(x.model, :($(x.expr) / $(y.expr)))
+Base.:/(x::JuMPExpression, y) = JuMPExpression(x.model, :($(x.expr) / $(y)))
+Base.:/(x, y::JuMPExpression) = JuMPExpression(y.model, :($(x) / $(y.expr)))
 
-function Base.:*(X::Matrix{AdvancedNonlinearExpression}, scalar::JuMP.NonlinearExpression)
-    scalar * X
-end
+Base.:*(λ::JuMPExpression, X::Matrix{JuMPExpression}) = [λ * x for x in X]
+Base.:*(λ::JuMP.AbstractJuMPScalar, X::Matrix{JuMPExpression}) = [λ * x for x in X]
+Base.:*(X::Matrix{JuMPExpression}, λ::JuMPExpression) = [x * λ for x in X]
+Base.:*(X::Matrix{JuMPExpression}, λ::JuMP.AbstractJuMPScalar) = [x * λ for x in X]
 
-function Base.:/(x::AdvancedNonlinearExpression, y::AdvancedNonlinearExpression)
-    checkmodelmatch(x, y)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression / y.expression))
-end
+Base.:/(X::Matrix{JuMPExpression}, λ::JuMPExpression) = [x / λ for x in X]
+Base.:/(X::Matrix{JuMPExpression}, λ::JuMP.AbstractJuMPScalar) = [x / λ for x in X]
 
-function Base.:/(x::AdvancedNonlinearExpression, y::Number)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression / y))
-end
+norm_sqr(X::Matrix{JuMPExpression}) = sum(X .^ 2)
 
-function Base.:/(x::Number, y::AdvancedNonlinearExpression)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x / y.expression))
-end
-
-function Base.:/(X::Matrix{AdvancedNonlinearExpression}, scalar::AdvancedNonlinearExpression)
-    m, n = size(X)
-    [X[i, j] / scalar for i in 1:m, j in 1:n]
-end
-
-function Base.:/(X::Matrix{AdvancedNonlinearExpression}, scalar::JuMP.NonlinearExpression)
-    model = X[1, 1].model
-    m, n = size(X)
-    [
-        AdvancedNonlinearExpression(
-            model,
-            JuMP.@NLexpression(model, X[i, j].expression / scalar)
-        )
-        for i in 1:m, j in 1:n
-    ]
-end
-
-function Base.transpose(X::Matrix{AdvancedNonlinearExpression})
-    m, n = size(X)
-    Xtransp = Matrix{AdvancedNonlinearExpression}(undef, n, m)
-    for j in 1:m
-        for i in 1:n
-            Xtransp[i, j] = X[j, i]
-        end
-    end
-
-    Xtransp
-end
-
-
-function Base.:^(x::AdvancedNonlinearExpression, power::Int)
-    AdvancedNonlinearExpression(x.model, JuMP.@NLexpression(x.model, x.expression^power))
-end
-
-function dot(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix{AdvancedNonlinearExpression})
-    model = X[1, 1].model
-    AdvancedNonlinearExpression(
-        model,
-        JuMP.@NLexpression(
-            model,
-            sum(x.expression * y.expression for (x, y) in zip(X, Y))
-        )
-    )
-end
-
-function dot(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix)
-    model = X[1, 1].model
-    AdvancedNonlinearExpression(
-        model,
-        JuMP.@NLexpression(
-            model,
-            sum(x.expression * y for (x, y) in zip(X, Y))
-        )
-    )
-end
-
-function dot(X::Matrix, Y::Matrix{AdvancedNonlinearExpression})
-    dot(Y, X)
-end
-
-function norm_sqr(X::Matrix{AdvancedNonlinearExpression})
-    model = X[1, 1].model
-    AdvancedNonlinearExpression(
-        model,
-        JuMP.@NLexpression(
-            model,
-            sum(x.expression^2 for x in X)
-        )
-    )
-end
-
-function Base.:*(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix{AdvancedNonlinearExpression})
-    X_rows, X_cols = size(X)
-    Y_rows, Y_cols = size(Y)
-    X_cols == Y_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
-    XY_rows, XY_cols = X_rows, Y_cols
-
-    model = X[1, 1].model
-
-    XY = Matrix{AdvancedNonlinearExpression}(undef, XY_rows, XY_cols)
-
-    for j in 1:XY_cols
-        for i in 1:XY_rows
-            XY[i, j] = AdvancedNonlinearExpression(
-                model,
-                JuMP.@NLexpression(model, sum(X[i, k].expression * Y[k, j].expression for k in 1:X_cols))
-            )
-        end
-    end
-
-    XY
-end
-
-function Base.:*(X::Matrix{AdvancedNonlinearExpression}, Y::Matrix)
-    X_rows, X_cols = size(X)
-    Y_rows, Y_cols = size(Y)
-    X_cols == Y_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
-    XY_rows, XY_cols = X_rows, Y_cols
-
-    model = X[1, 1].model
-
-    XY = Matrix{AdvancedNonlinearExpression}(undef, XY_rows, XY_cols)
-
-    for j in 1:XY_cols
-        for i in 1:XY_rows
-            XY[i, j] = AdvancedNonlinearExpression(
-                model,
-                JuMP.@NLexpression(model, sum(X[i, k].expression * Y[k, j] for k in 1:X_cols))
-            )
-        end
-    end
-
-    XY
-end
-
-function Base.:*(X::Matrix, Y::Matrix{AdvancedNonlinearExpression})
-    X_rows, X_cols = size(X)
-    Y_rows, Y_cols = size(Y)
-    X_cols == Y_rows || throw(DimensionMismatch("matrix sizes do not match: dimensions are $(size(A)), $(size(B))"))
-    XY_rows, XY_cols = X_rows, Y_cols
-
-    model = Y[1, 1].model
-
-    XY = Matrix{AdvancedNonlinearExpression}(undef, XY_rows, XY_cols)
-
-    for j in 1:XY_cols
-        for i in 1:XY_rows
-            XY[i, j] = AdvancedNonlinearExpression(
-                model,
-                JuMP.@NLexpression(model, sum(X[i, k] * Y[k, j].expression for k in 1:X_cols))
-            )
-        end
-    end
-
-    XY
-end
+LinearAlgebra.dot(x::JuMPExpression, y::JuMPExpression) = x * y
+LinearAlgebra.dot(x, y::JuMPExpression) = x * y
+LinearAlgebra.dot(x::JuMPExpression, y) = x * y
 
 function checksquare(A)
     m, n = size(A)
@@ -246,21 +68,12 @@ function checksquare(A)
     return m
 end
 
-function tr(X::Matrix{AdvancedNonlinearExpression})
-    model = X[1, 1].model
-    n = checksquare(X)
-    AdvancedNonlinearExpression(
-        model,
-        JuMP.@NLexpression(model, sum(X[i, i].expression for i in 1:n))
-    )
-end
-
-function minor(X::Matrix{AdvancedNonlinearExpression}, i, j)
+function minor(X::Matrix{T}, i, j) where {T}
     m, n = size(X)
 
     (1 <= i <= m && 1 <= j <= n) || throw(ArgumentError("minor indices not in the correct range, current values: ($i, $j)"))
 
-    Xminor = Matrix{AdvancedNonlinearExpression}(undef, m - 1, n - 1)
+    Xminor = Matrix{T}(undef, m - 1, n - 1)
     if m == 1 || n == 1
         return Xminor
     end
@@ -285,43 +98,33 @@ function minor(X::Matrix{AdvancedNonlinearExpression}, i, j)
     Xminor
 end
 
-function det(X::Matrix{AdvancedNonlinearExpression})
+function det(X::Matrix{JuMPExpression})
     n = checksquare(X)
-    model = X[1, 1].model
 
     if n == 1
         return X[1, 1]
     elseif n == 2
-        return AdvancedNonlinearExpression(
-            model,
-            JuMP.@NLexpression(model, X[1, 1].expression * X[2, 2].expression - X[2, 1].expression * X[1, 2].expression)
-        )
+        return X[1, 1] * X[2, 2] - X[2, 1] * X[1, 2]
     end
 
-    det_X = AdvancedNonlinearExpression(model, 0)
+    det_X = zero(JuMPExpression)
 
     for j in 1:n
         det_minor = det(minor(X, 1, j))
 
         if isodd(j)
-            det_X = AdvancedNonlinearExpression(
-                model,
-                JuMP.@NLexpression(model, det_X.expression + X[1, j].expression * det_minor.expression)
-            )
+            det_X = det_X + X[1, j] * det_minor
         else
-            det_X = AdvancedNonlinearExpression(
-                model,
-                JuMP.@NLexpression(model, det_X.expression - X[1, j].expression * det_minor.expression)
-            )
+            det_X = det_X - X[1, j] * det_minor
         end
     end
 
     det_X
 end
 
-function adjugate(X::Matrix{AdvancedNonlinearExpression})
+function adjugate(X::Matrix{JuMPExpression})
     n = checksquare(X)
-    Xadj = Matrix{AdvancedNonlinearExpression}(undef, n, n)
+    Xadj = Matrix{JuMPExpression}(undef, n, n)
 
     for j in 1:n
         for i in 1:n
@@ -337,10 +140,6 @@ function adjugate(X::Matrix{AdvancedNonlinearExpression})
     Xadj
 end
 
-function Base.inv(X::Matrix{AdvancedNonlinearExpression})
+function Base.inv(X::Matrix{JuMPExpression})
     adjugate(X) / det(X)
-end
-
-function nlexpr_vector(model::JuMP.Model, iterable)
-    [AdvancedNonlinearExpression(model, x) for x in iterable]
 end
