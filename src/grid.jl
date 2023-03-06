@@ -344,8 +344,8 @@ function plot(triangulation::Vector{Triangle})
             min_x - horizontal_padding, max_x + vertical_padding,
             min_y - horizontal_padding, max_y + horizontal_padding),
         aspect=aspect)
-    # CairoMakie.hidedecorations!(ax)
-    # CairoMakie.hidespines!(ax)
+    CairoMakie.hidedecorations!(ax)
+    CairoMakie.hidespines!(ax)
     CairoMakie.poly!(vertex_coords, faces, color=:transparent, strokewidth=strokewidth, shading=true)
 
     fig
