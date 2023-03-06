@@ -68,7 +68,7 @@ function ThermalStep(grid::SimulationGrid, mechanical_step::MechanicalStep, sear
     ThermalStep(m, prev_x, prev_y, prev_θ, x, y, θ)
 end
 
-struct Simulation
+mutable struct Simulation
     grid::SimulationGrid
     deformation_search_radius::Number
     temperature_search_radius::Number
@@ -82,7 +82,50 @@ struct Simulation
     mechanical_step::MechanicalStep
     thermal_step::ThermalStep
     steps::Vector{SimulationStep}
+    x_range::Tuple{Float64, Float64}
+    y_range::Tuple{Float64, Float64}
+    θ_range::Tuple{Float64, Float64}
+
+    function Simulation(
+        grid,
+        deformation_search_radius,
+        temperature_search_radius,
+        shape_memory_scaling,
+        initial_temperature,
+        fps,
+        heat_transfer_coefficient,
+        heat_conductivity,
+        entropic_heat_capacity,
+        external_temperature,
+        mechanical_step,
+        thermal_step,
+        steps
+    )
+        new(
+            grid,
+            deformation_search_radius,
+            temperature_search_radius,
+            shape_memory_scaling,
+            initial_temperature,
+            fps,
+            heat_transfer_coefficient,
+            heat_conductivity,
+            entropic_heat_capacity,
+            external_temperature,
+            mechanical_step,
+            thermal_step,
+            steps,
+            get_initial_range(steps[1].x, steps[2].x),
+            get_initial_range(steps[1].y, steps[2].y),
+            get_initial_range(steps[1].θ, steps[2].θ)
+        )
+    end
 end
+
+get_initial_range(step1, step2) = (
+    min(minimum(step1), minimum(step2)),
+    max(maximum(step1), maximum(step2))
+)
 
 function Simulation(
     grid::SimulationGrid;
@@ -416,11 +459,34 @@ function solve!(thermal_step::ThermalStep)
     JuMP.optimize!(thermal_step.model)
 end
 
+function update_ranges!(simulation)
+    simulation.x_range = get_new_range(simulation.x_range, simulation.steps[end].x, quiet=false)
+    simulation.y_range = get_new_range(simulation.y_range, simulation.steps[end].y)
+    simulation.θ_range = get_new_range(simulation.θ_range, simulation.steps[end].θ, quiet=false)
+end
+
+# get_new_range(old_range, new_step) = (
+#     min(old_range[1], minimum(new_step)),
+#     max(old_range[2], maximum(new_step))
+# )
+
+function get_new_range(old_range, new_step; quiet=true)
+    new_range = (
+        min(old_range[1], minimum(new_step)),
+        max(old_range[2], maximum(new_step))
+    )
+    if !quiet
+        display(new_range)
+    end
+    new_range
+end
+
 function append_step!(simulation::Simulation)
     x = JuMP.value.(simulation.mechanical_step.x)
     y = JuMP.value.(simulation.mechanical_step.y)
     θ = JuMP.value.(simulation.thermal_step.θ)
     push!(simulation.steps, SimulationStep(x, y, θ))
+    update_ranges!(simulation)
 end
 
 function simulate!(simulation::Simulation, num_steps=1)
