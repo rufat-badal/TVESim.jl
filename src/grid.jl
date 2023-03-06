@@ -73,11 +73,34 @@ struct SimulationGrid
     num_vertices::Int
     num_dirichlet_vertices::Int
     num_neumann_vertices::Int
+    # order: dirichlet vertices, neumann vertices, internal vertices
+    dirichlet_vertices
+    neumann_vertices
+    boundary_vertices
     x::Vector{Float64}
     y::Vector{Float64}
     θ::Vector{Float64}
     triangles::Vector{Tuple{Int,Int,Int}}
     area_factors::Vector{Float64}
+
+    function SimulationGrid(
+        num_vertices, num_dirichlet_vertices, num_neumann_vertices,
+        x, y, θ, triangles
+    )
+        dirichlet_vertices = 1:num_dirichlet_vertices
+        neumann_vertices = num_dirichlet_vertices+1:num_dirichlet_vertices+num_neumann_vertices
+        boundary_vertices = 1:num_dirichlet_vertices+num_neumann_vertices
+        area_factors = [
+            area_factor([x[i1], y[i1]], [x[i2], y[i2]], [x[i3], y[i3]])
+            for (i1, i2, i3) in triangles
+        ]
+
+        new(
+            num_vertices, num_dirichlet_vertices, num_neumann_vertices,
+            dirichlet_vertices, neumann_vertices, boundary_vertices,
+            x, y, θ, triangles, area_factors
+        )
+    end
 end
 
 function SimulationGrid(width, height, initial_temperature, triangulation, isinternal, isdirichlet)
@@ -130,14 +153,10 @@ function SimulationGrid(width, height, initial_temperature, triangulation, isint
     vertex_to_id = Dict(v => i for (i, v) in enumerate(vertices))
     triangles = [(vertex_to_id[T[1]], vertex_to_id[T[2]], vertex_to_id[T[3]]) for T in internal_triangles]
     θ = [initial_temperature for _ in vertices]
-    area_factors = [
-        area_factor([x[i1], y[i1]], [x[i2], y[i2]], [x[i3], y[i3]])
-        for (i1, i2, i3) in triangles
-    ]
 
     SimulationGrid(
         length(vertices), length(dirichlet_vertices), length(neumann_vertices),
-        x, y, θ, triangles, area_factors
+        x, y, θ, triangles
     )
 end
 
@@ -218,7 +237,7 @@ function SimulationGrid(boundary_points, initial_temperature, isdirichlet)
 
     SimulationGrid(
         size(points, 2), num_dirichlet_vertices, num_boundary_vertices - num_dirichlet_vertices,
-        x, y, θ, triangles, area_factors
+        x, y, θ, triangles
     )
 end
 
@@ -354,7 +373,7 @@ function circle_boundary_points(radius, num_points)
     [x y]'
 end
 
-area_factor(a, b, c) = abs(LinearAlgebra.det([b-a c-a]))
+area_factor(a, b, c) = abs(LinearAlgebra.det([b - a c - a]))
 
 function test_crystalline_simulationgrid(triangulation)
     radius = 20
