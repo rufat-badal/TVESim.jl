@@ -190,15 +190,21 @@ function create_objective!(
 
     # account for heat transfer on the boundar
     # TODO: use proper approximation of a boundary integral (at least account for the length of each boundary edge)
-    bounadry_heat_transfer = JuMP.@NLexpression(
+    boundary_heat_transfer = JuMP.@NLexpression(
         m,
-        0.5 * sum(
+        0.5 * heat_transfer_coefficient * sum(
             (θ[i] - external_temperature)^2 for i in grid.boundary_vertices
         )
     )
 
     # heat diffusion
-    display(get_gradients(θ, grid, m)[begin])
+    temp_gradients = get_gradients(θ, grid, m)
+    heat_diffusion = add_nonlinear_expression(
+        0.5 * sum(
+            dot(∇θ, heat_conductivity * ∇θ)
+            for ∇θ in temp_gradients
+        )
+    )
 
     # heat sources and sinks
     scaling_matrix = [1/shape_memory_scaling 0; 0 1]
@@ -268,7 +274,8 @@ function create_objective!(
 
     JuMP.@NLobjective(
         m, Min,
-        bounadry_heat_transfer
+        boundary_heat_transfer
+        + heat_diffusion
         + heat_creation_consumption
         + fps * dissipation
     )
