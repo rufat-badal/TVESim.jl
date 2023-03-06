@@ -76,7 +76,7 @@ struct Simulation
     initial_temperature::Number
     fps::Number
     heat_transfer_coefficient::Number
-    heat_conductivity::Vector{Number}
+    heat_conductivity::Matrix{Number}
     entropic_heat_capacity::Number
     external_temperature::Number
     mechanical_step::MechanicalStep
@@ -89,7 +89,7 @@ function Simulation(
     initial_temperature=0,
     fps=30,
     heat_transfer_coefficient=0.5,
-    heat_conductivity=[1.0, 1.0],
+    heat_conductivity=[1 0; 0 1],
     entropic_heat_capacity=10.0,
     external_temperature=0.0
 )
@@ -197,6 +197,9 @@ function create_objective!(
         )
     )
 
+    # heat diffusion
+    display(get_gradients(θ, grid, m)[begin])
+
     # heat sources and sinks
     scaling_matrix = [1/shape_memory_scaling 0; 0 1]
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
@@ -275,13 +278,19 @@ function get_strains(m, prev_x, prev_y, x, y, grid)
     prev_triangles = [[jumpexpression_array(m, [prev_x[i], prev_y[i]]) for i in T] for T in grid.triangles]
     triangles = [[jumpexpression_array(m, [x[i], y[i]]) for i in T] for T in grid.triangles]
     reference_triangles = [[[grid.x[i], grid.y[i]] for i in T] for T in grid.triangles]
-    prev_strains = strain.(zip(prev_triangles, reference_triangles))
-    strains = strain.(zip(triangles, reference_triangles))
+    prev_strains = [
+        strain(prev_triangle, reference_triangle)
+        for (prev_triangle, reference_triangle) in zip(prev_triangles, reference_triangles)
+    ]
+    strains = [
+        strain(triangle, reference_triangle)
+        for (triangle, reference_triangle) in zip(triangles, reference_triangles)
+    ]
 
     prev_strains, strains
 end
 
-function strain((triangle, reference_triangle))
+function strain(triangle, reference_triangle)
     a, b, c = reference_triangle
     gradient_equilateral_to_reference = [b - a c - a]
     a, b, c = triangle
@@ -305,6 +314,19 @@ function get_strain_rates(prev_strains, strains)
         for (prev_F, dot_F) in zip(prev_strains, strain_rates)
     ]
     strain_rates, symmetrized_strain_rates
+end
+
+function get_gradients(f, grid, model)
+    node_values = [jumpexpression_array(model, [f[i1], f[i2], f[i3]]) for (i1, i2, i3) in grid.triangles]
+    reference_triangles = [[[grid.x[i], grid.y[i]] for i in T] for T in grid.triangles]
+    [gradient(f, reference_triangle) for (f, reference_triangle) in zip(node_values, reference_triangles)]
+end
+
+function gradient(f, reference_triangle)
+    fa, fb, fc = f
+    a, b, c = reference_triangle
+
+    transpose([fb - fa fc - fa] * inv([b - a c - a]))
 end
 
 function integral(f::Function, x, grid, model::JuMP.Model)
