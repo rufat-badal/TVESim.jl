@@ -2,6 +2,8 @@ function austenite_percentage(θ)
     return 1 - 1 / (1 + θ)
 end
 
+dissipation_potential(dot_C::Matrix{JuMPExpression}) = norm_sqr(dot_C) / 2
+
 function neo_hook(F::Matrix{JuMPExpression})
     trace_C = tr(transpose(F) * F)
     det_F = det(F)

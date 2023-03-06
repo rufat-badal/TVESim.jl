@@ -161,7 +161,7 @@ function create_objective!(
         )
     ))
 
-    dissipation = add_nonlinear_expression(0.5 * sum(norm_sqr(dot_C) for dot_C in symmetrized_strain_rates))
+    dissipation = add_nonlinear_expression(sum(dissipation_potential(dot_C) for dot_C in symmetrized_strain_rates))
     JuMP.@NLobjective(m, Min, elastic_energy + fps * dissipation)
 end
 
@@ -182,8 +182,6 @@ function create_objective!(
     strain_rates, symmetrized_strain_rates = get_strain_rates(prev_strains, strains)
 
     # heat sources and sinks
-    dissipation_rates = norm_sqr.(symmetrized_strain_rates)
-
     scaling_matrix = [1/shape_memory_scaling 0; 0 1]
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
     JuMP.register(m, :identity, 1, identity; autodiff=true)
@@ -199,14 +197,15 @@ function create_objective!(
             strain_rates
         )
     ]
-
+    
+    dissipation_rate(dot_C) = 2 * dissipation_potential(dot_C)
     heat_creation_consumption = add_nonlinear_expression(
         -sum(
-            d_rate * temp + adiab
-            for (d_rate, temp, adiab) in zip(
-                dissipation_rates,
-                integral(θ, grid, m),
+            adiab + d_rate * temp 
+            for (adiab, d_rate, temp) in zip(
                 adiabatic_terms,
+                dissipation_rate.(symmetrized_strain_rates),
+                integral(θ, grid, m),
             )
         )
     )
