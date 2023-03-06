@@ -109,7 +109,7 @@ function Simulation(
     thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
     create_objective!(
         thermal_step, grid, shape_memory_scaling,
-        heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
+        heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature, fps
     )
 
     x = JuMP.value.(mechanical_step.x)
@@ -134,8 +134,10 @@ function Simulation(
 end
 
 function create_objective!(
-    mechanical_step::MechanicalStep, grid::SimulationGrid,
-    shape_memory_scaling::Number, fps::Number
+    mechanical_step::MechanicalStep,
+    grid::SimulationGrid,
+    shape_memory_scaling::Number,
+    fps
 )
     m = mechanical_step.model
     prev_x = mechanical_step.prev_x
@@ -167,7 +169,12 @@ end
 
 function create_objective!(
     thermal_step::ThermalStep, grid::SimulationGrid,
-    shape_memory_scaling, heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature
+    shape_memory_scaling,
+    heat_transfer_coefficient,
+    heat_conductivity,
+    entropic_heat_capacity,
+    external_temperature,
+    fps
 )
     m = thermal_step.model
     prev_x = thermal_step.prev_x
@@ -246,6 +253,8 @@ function create_objective!(
             )
         )
     )
+
+    JuMP.@NLobjective(m, Min, heat_creation_consumption + fps * dissipation)
 end
 
 function get_strains(m, prev_x, prev_y, x, y, grid)
