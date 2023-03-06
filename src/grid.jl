@@ -276,8 +276,8 @@ function plot(grid::SimulationGrid, temp_range; show_edges=false)
             min_x - horizontal_padding, max_x + vertical_padding,
             min_y - horizontal_padding, max_y + horizontal_padding),
         aspect=aspect)
-    # CairoMakie.hidedecorations!(ax)
-    # CairoMakie.hidespines!(ax)
+    CairoMakie.hidedecorations!(ax)
+    CairoMakie.hidespines!(ax)
 
     vertices = [grid.x grid.y]
     faces = Matrix{Int}(undef, length(grid.triangles), 3)
