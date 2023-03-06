@@ -236,6 +236,16 @@ function create_objective!(
             integral(square, θ, grid, m)
         )
     ]
+
+    dissipation = add_nonlinear_expression(
+        0.5 * sum(
+            antider_W - antider_prev_W 
+            for (antider_W, antider_prev_W) in zip(
+                antider_internal_energies,
+                antider_prev_internal_energies
+            )
+        )
+    )
 end
 
 function get_strains(m, prev_x, prev_y, x, y, grid)
