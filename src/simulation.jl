@@ -460,26 +460,15 @@ function solve!(thermal_step::ThermalStep)
 end
 
 function update_ranges!(simulation)
-    simulation.x_range = get_new_range(simulation.x_range, simulation.steps[end].x, quiet=false)
+    simulation.x_range = get_new_range(simulation.x_range, simulation.steps[end].x)
     simulation.y_range = get_new_range(simulation.y_range, simulation.steps[end].y)
-    simulation.θ_range = get_new_range(simulation.θ_range, simulation.steps[end].θ, quiet=false)
+    simulation.θ_range = get_new_range(simulation.θ_range, simulation.steps[end].θ)
 end
 
-# get_new_range(old_range, new_step) = (
-#     min(old_range[1], minimum(new_step)),
-#     max(old_range[2], maximum(new_step))
-# )
-
-function get_new_range(old_range, new_step; quiet=true)
-    new_range = (
-        min(old_range[1], minimum(new_step)),
-        max(old_range[2], maximum(new_step))
-    )
-    if !quiet
-        display(new_range)
-    end
-    new_range
-end
+get_new_range(old_range, new_step) = (
+    min(old_range[1], minimum(new_step)),
+    max(old_range[2], maximum(new_step))
+)
 
 function append_step!(simulation::Simulation)
     x = JuMP.value.(simulation.mechanical_step.x)
@@ -504,22 +493,26 @@ function simulate!(simulation::Simulation, num_steps=1)
     end
 end
 
-function plot(step::SimulationStep, triangles)
+function plot(simulation::Simulation, i::Int; show_edges=false)
     plot_width = 1000
     strokewidth = 1
     padding_perc = 0.5
 
+    step = simulation.steps[i]
     x, y = step.x, step.y
     vertex_coords = [x y]
+    triangles = simulation.grid.triangles
+    # TODO: generate this in the grid object
     faces = Matrix{Int}(undef, length(triangles), 3)
     for (i, T) in enumerate(triangles)
         for (j, v) in enumerate(T)
             faces[i, j] = v
         end
     end
+    vertices = [x y]
 
-    min_x, max_x = minimum(x), maximum(x)
-    min_y, max_y = minimum(y), maximum(y)
+    min_x, max_x = simulation.x_range
+    min_y, max_y = simulation.y_range
     width = max_x - min_x
     height = max_y - min_y
     aspect = width / height
@@ -535,7 +528,26 @@ function plot(step::SimulationStep, triangles)
         aspect=aspect)
     CairoMakie.hidedecorations!(ax)
     CairoMakie.hidespines!(ax)
-    CairoMakie.poly!(vertex_coords, faces, color=:transparent, strokewidth=strokewidth, shading=true)
+
+    if show_edges
+        CairoMakie.poly!(
+            vertices,
+            faces,
+            color=step.θ,
+            colormap=:plasma,
+            colorrange=simulation.θ_range,
+            strokewidth=strokewidth,
+            shading=true
+        )
+    else
+        CairoMakie.mesh!(
+            vertices,
+            faces,
+            color=step.θ,
+            colormap=:plasma,
+            colorrange=simulation.θ_range
+        )
+    end
 
     fig
 end
