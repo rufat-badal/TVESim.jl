@@ -18,9 +18,11 @@ function isosceles_right_triangulation(width::Number, height::Number)
     num_vertices_hor = num_squares_hor + 1
     num_vertices_ver = num_squares_ver + 1
     vertices = Matrix{Vertex}(undef, num_vertices_hor, num_vertices_ver)
+    lower_left_x = -width / 2
+    lower_left_y = -height / 2
     for i in 1:num_vertices_hor
         for j in 1:num_vertices_ver
-            vertices[i, j] = Vertex(i - 1, j - 1)
+            vertices[i, j] = Vertex(lower_left_x + i - 1, lower_left_y + j - 1)
         end
     end
 
@@ -43,9 +45,14 @@ function equilateral_triangulation(width::Number, height::Number)
     num_layers = ceil(Int, height / triangle_height)
     num_upward_triangles_per_layer = ceil(Int, (width - triangle_side_length / 2) / triangle_side_length) + 1
     vertices = Matrix{Vertex}(undef, num_upward_triangles_per_layer + 1, num_layers + 1)
+    lower_left_x = -width / 2
+    lower_left_y = -height / 2
     for i in 1:(num_upward_triangles_per_layer+1)
         for j in 1:(num_layers+1)
-            vertices[i, j] = Vertex(-(j % 2) * triangle_side_length / 2 + (i - 1) * triangle_side_length, (j - 1) * triangle_height)
+            vertices[i, j] = Vertex(
+                lower_left_x - (j % 2) * triangle_side_length / 2 + (i - 1) * triangle_side_length,
+                lower_left_y + (j - 1) * triangle_height
+            )
         end
     end
 
@@ -371,9 +378,9 @@ end
 
 function circle_boundary_points(radius, num_points)
     θ = range(0, 2π, length=num_points + 1)
-    x = radius * (1 .+ cos.(θ))
+    x = radius * cos.(θ)
     pop!(x)
-    y = radius * (1 .+ sin.(θ))
+    y = radius * sin.(θ)
     pop!(y)
 
     [x y]'
