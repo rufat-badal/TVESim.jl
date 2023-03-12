@@ -1,9 +1,8 @@
 using TVESim
-using CairoMakie
 using Dates
 
 function setup_experiment_folder(keyword)
-    t = Dates.format(now(), "yy-mm-dd-H-M-S")
+    t = Dates.format(now(), "dd-mm-yyyy-H-M-S")
     mkpath("results/experiments/$(keyword)_$t/")
 end
 
@@ -18,8 +17,8 @@ function square_experiment()
     simulation = Simulation(grid, fps=0.75, heat_transfer_coefficient=6)
     num_steps = 40
     simulate!(simulation, num_steps - 2)
-    TVESim.save(simulation, experiments_folder, show_edges=true)
-    save("$experiments_folder/grid.png", TVESim.plot(grid, simulation.θ_range, show_edges=true))
+    save(simulation, experiments_folder, show_edges=true)
+    save(grid, simulation.θ_range, experiments_folder, show_edges=true)
     return
 end
 
@@ -31,11 +30,11 @@ function cooling_square_experiment()
     isinternal(x, y) = -(width + 1) / 2 <= x <= (width + 1) / 2 && -(height + 1) / 2 <= y <= (height + 1) / 2
     isdirichlet(x, y) = x <= -(width - 1) / 2
     grid = SimulationGrid(width + 2, height + 2, initial_temperature, TVESim.isosceles_right_triangulation, isinternal, isdirichlet)
-    simulation = Simulation(grid, fps=1.5, heat_transfer_coefficient=4)
+    simulation = Simulation(grid, fps=1.3, heat_transfer_coefficient=4)
     num_steps = 70
     simulate!(simulation, num_steps - 2)
-    TVESim.save(simulation, experiments_folder, show_edges=true)
-    save("$experiments_folder/grid.png", TVESim.plot(grid, simulation.θ_range, show_edges=true))
+    save(simulation, experiments_folder, show_edges=true)
+    save(grid, simulation.θ_range, experiments_folder, show_edges=true)
     return
 end
 
@@ -50,8 +49,8 @@ function circle_experiment()
     simulation = Simulation(grid, fps=1.5, heat_transfer_coefficient=6)
     num_steps = 20
     simulate!(simulation, num_steps - 2)
-    TVESim.save(simulation, experiments_folder, show_edges=true)
-    save("$experiments_folder/grid.png", TVESim.plot(grid, simulation.θ_range, show_edges=true))
+    save(simulation, experiments_folder, show_edges=true)
+    save(grid, simulation.θ_range, experiments_folder, show_edges=true)
     return
 end
 

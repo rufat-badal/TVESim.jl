@@ -3,6 +3,7 @@ module TVESim
 export SimulationGrid
 export Simulation
 export simulate!
+export save
 
 import JuMP
 import MadNLP

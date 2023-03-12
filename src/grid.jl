@@ -409,3 +409,7 @@ function test_cdt_simulationgrid()
     grid = SimulationGrid(circle_boundary_points(radius, num_boundary_points), initial_temperature, isdirichlet)
     plot(grid, (0.0, 1.0), show_edges=true)
 end
+
+function save(grid::SimulationGrid, temp_range, folder; show_edges=false)
+    CairoMakie.save("$folder/grid.png", plot(grid, temp_range, show_edges=show_edges))
+end
