@@ -10,6 +10,7 @@ import MadNLP
 import LinearAlgebra
 import LinearAlgebra: tr, transpose, dot
 import CairoMakie
+import Makie
 import Triangulate
 import ProgressBars
 

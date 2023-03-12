@@ -493,13 +493,9 @@ function simulate!(simulation::Simulation, num_steps=1)
     end
 end
 
-function plot(simulation::Simulation, i::Int; show_edges=false)
-    num_horizontal_pixels = 2500
-    strokewidth = 1 / 1000 * num_horizontal_pixels
-
+function plot(fig::Makie.Figure, ax::Makie.Axis, simulation::Simulation, i::Int, show_edges, strokewidth)
     step = simulation.steps[i]
     x, y = step.x, step.y
-    vertex_coords = [x y]
     triangles = simulation.grid.triangles
     # TODO: generate this in the grid object
     faces = Matrix{Int}(undef, length(triangles), 3)
@@ -510,6 +506,42 @@ function plot(simulation::Simulation, i::Int; show_edges=false)
     end
     vertices = [x y]
 
+    CairoMakie.empty!(ax)
+    if show_edges
+        CairoMakie.poly!(
+            ax,
+            vertices,
+            faces,
+            color=step.θ,
+            colormap=:plasma,
+            colorrange=simulation.θ_range,
+            strokewidth=strokewidth,
+            shading=true
+        )
+    else
+        CairoMakie.mesh!(
+            ax,
+            vertices,
+            faces,
+            color=step.θ,
+            colormap=:plasma,
+            colorrange=simulation.θ_range
+        )
+    end
+
+    fig
+end
+
+function plot(simulation::Simulation, i::Int; show_edges=false)
+    num_horizontal_pixels = 2500
+    strokewidth = 1 / 1000 * num_horizontal_pixels
+
+    fig, ax = get_figure(simulation, num_horizontal_pixels, show_edges ? strokewidth : 0)
+
+    plot(fig, ax, simulation, i, show_edges, strokewidth)
+end
+
+function get_figure(simulation::Simulation, num_horizontal_pixels, strokewidth)
     min_x, max_x = simulation.x_range
     min_y, max_y = simulation.y_range
     width = max_x - min_x
@@ -518,7 +550,7 @@ function plot(simulation::Simulation, i::Int; show_edges=false)
     plot_height = num_horizontal_pixels / aspect
     fig = CairoMakie.Figure(resolution=(num_horizontal_pixels, plot_height))
     padding = 0
-    if show_edges
+    if strokewidth > 0
         length_pixel = width / num_horizontal_pixels
         padding = strokewidth / 2 * length_pixel
     end
@@ -531,31 +563,15 @@ function plot(simulation::Simulation, i::Int; show_edges=false)
     CairoMakie.hidedecorations!(ax)
     CairoMakie.hidespines!(ax)
 
-    if show_edges
-        CairoMakie.poly!(
-            vertices,
-            faces,
-            color=step.θ,
-            colormap=:plasma,
-            colorrange=simulation.θ_range,
-            strokewidth=strokewidth,
-            shading=true
-        )
-    else
-        CairoMakie.mesh!(
-            vertices,
-            faces,
-            color=step.θ,
-            colormap=:plasma,
-            colorrange=simulation.θ_range
-        )
-    end
-
-    fig
+    fig, ax
 end
 
 function save(simulation::Simulation, folder; show_edges=false)
+    num_horizontal_pixels = 2500
+    strokewidth = 1 / 1000 * num_horizontal_pixels
+    fig, ax = get_figure(simulation, num_horizontal_pixels, show_edges ? strokewidth : 0)
+
     for i in ProgressBars.ProgressBar(1:length(simulation.steps))
-        CairoMakie.save("$folder/step_$i.png", plot(simulation, i, show_edges=show_edges))
+        CairoMakie.save("$folder/step_$i.png", plot(fig, ax, simulation, i, show_edges, strokewidth))
     end
 end

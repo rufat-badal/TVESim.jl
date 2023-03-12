@@ -31,7 +31,7 @@ function cooling_square_experiment()
     isdirichlet(x, y) = x <= -(width - 1) / 2
     grid = SimulationGrid(width + 2, height + 2, initial_temperature, TVESim.isosceles_right_triangulation, isinternal, isdirichlet)
     simulation = Simulation(grid, fps=1.3, heat_transfer_coefficient=4)
-    num_steps = 70
+    num_steps = 80
     simulate!(simulation, num_steps - 2)
     save(simulation, experiments_folder, show_edges=true)
     save(grid, simulation.θ_range, experiments_folder, show_edges=true)
@@ -55,5 +55,5 @@ function circle_experiment()
 end
 
 square_experiment()
-cooling_square_experiment()
-circle_experiment()
+# cooling_square_experiment()
+# circle_experiment()
