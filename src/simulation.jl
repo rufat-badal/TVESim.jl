@@ -553,3 +553,9 @@ function plot(simulation::Simulation, i::Int; show_edges=false)
 
     fig
 end
+
+function save(simulation::Simulation, folder; show_edges=false)
+    for i in 1:length(simulation.steps)
+        CairoMakie.save("$folder/step_$i.png", TVESim.plot(simulation, i, show_edges=show_edges))
+    end
+end

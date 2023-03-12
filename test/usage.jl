@@ -2,13 +2,13 @@ using TVESim
 using CairoMakie
 using Dates
 
-function setup_experiment_directory(keyword)
+function setup_experiment_folder(keyword)
     t = Dates.format(now(), "yy-mm-dd-H-M-S")
     mkpath("results/experiments/$(keyword)_$t/")
 end
 
 function square_experiment()
-    experiments_directory = setup_experiment_directory("square")
+    experiments_folder = setup_experiment_folder("square")
     width = 10
     height = 10
     initial_temperature = 0.0
@@ -18,15 +18,13 @@ function square_experiment()
     simulation = Simulation(grid, fps=0.75, heat_transfer_coefficient=6)
     num_steps = 40
     simulate!(simulation, num_steps - 2)
-    for i in 1:num_steps
-        save("$experiments_directory/step_$i.png", TVESim.plot(simulation, i, show_edges=true))
-    end
-    save("$experiments_directory/grid.png", TVESim.plot(grid, simulation.θ_range, show_edges=true))
+    TVESim.save(simulation, experiments_folder, show_edges=true)
+    save("$experiments_folder/grid.png", TVESim.plot(grid, simulation.θ_range, show_edges=true))
     return
 end
 
 function cooling_square_experiment()
-    experiments_directory = setup_experiment_directory("cooling_square")
+    experiments_folder = setup_experiment_folder("cooling_square")
     width = 10
     height = 10
     initial_temperature = 10
@@ -34,17 +32,15 @@ function cooling_square_experiment()
     isdirichlet(x, y) = x <= -(width - 1) / 2
     grid = SimulationGrid(width + 2, height + 2, initial_temperature, TVESim.isosceles_right_triangulation, isinternal, isdirichlet)
     simulation = Simulation(grid, fps=1.5, heat_transfer_coefficient=4)
-    num_steps = 50
+    num_steps = 70
     simulate!(simulation, num_steps - 2)
-    for i in 1:num_steps
-        save("$experiments_directory/step_$i.png", TVESim.plot(simulation, i, show_edges=true))
-    end
-    save("$experiments_directory/grid.png", TVESim.plot(grid, simulation.θ_range, show_edges=true))
+    TVESim.save(simulation, experiments_folder, show_edges=true)
+    save("$experiments_folder/grid.png", TVESim.plot(grid, simulation.θ_range, show_edges=true))
     return
 end
 
 function circle_experiment()
-    experiments_directory = setup_experiment_directory("circle")
+    experiments_folder = setup_experiment_folder("circle")
     initial_temperature = 0.0
     radius = 5
     num_boundary_points = 70
@@ -54,13 +50,11 @@ function circle_experiment()
     simulation = Simulation(grid, fps=1.5, heat_transfer_coefficient=6)
     num_steps = 20
     simulate!(simulation, num_steps - 2)
-    for i in 1:num_steps
-        save("$experiments_directory/step_$i.png", TVESim.plot(simulation, i, show_edges=true))
-    end
-    save("$experiments_directory/grid.png", TVESim.plot(grid, simulation.θ_range, show_edges=true))
+    TVESim.save(simulation, experiments_folder, show_edges=true)
+    save("$experiments_folder/grid.png", TVESim.plot(grid, simulation.θ_range, show_edges=true))
     return
 end
 
-circle_experiment()
 square_experiment()
 cooling_square_experiment()
+circle_experiment()
