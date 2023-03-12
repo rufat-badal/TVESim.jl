@@ -257,24 +257,24 @@ function update_vertex_type(v::Vertex, containing_triangle_isinternal::Bool)
 end
 
 function plot(grid::SimulationGrid, temp_range; show_edges=false)
-    plot_width = 1000 # in pixels!
-    strokewidth = 1
-    padding_perc = 0.5
+    num_horizontal_pixels = 2500 # in pixels!
+    strokewidth = 2.5 / 1000 * num_horizontal_pixels
+    markersize = 2 / 100 * num_horizontal_pixels
 
     min_x, max_x = minimum(grid.x), maximum(grid.x)
     min_y, max_y = minimum(grid.y), maximum(grid.y)
     width = max_x - min_x
     height = max_y - min_y
     aspect = width / height
-    plot_height = plot_width / aspect
-    fig = CairoMakie.Figure(resolution=(plot_width, plot_height))
-    horizontal_padding = padding_perc / 100 * width
-    vertical_padding = padding_perc / 100 * height
+    plot_height = num_horizontal_pixels / aspect
+    fig = CairoMakie.Figure(resolution=(num_horizontal_pixels, plot_height))
+    length_pixel = width / num_horizontal_pixels
+    padding = (strokewidth + markersize / 2) * length_pixel
     ax = CairoMakie.Axis(
         fig[1, 1],
         limits=(
-            min_x - horizontal_padding, max_x + vertical_padding,
-            min_y - horizontal_padding, max_y + horizontal_padding),
+            min_x - padding, max_x + padding,
+            min_y - padding, max_y + padding),
         aspect=aspect)
     CairoMakie.hidedecorations!(ax)
     CairoMakie.hidespines!(ax)
@@ -298,15 +298,21 @@ function plot(grid::SimulationGrid, temp_range; show_edges=false)
     end
 
     dirichlet_ids = 1:grid.num_dirichlet_vertices
-    CairoMakie.scatter!(grid.x[dirichlet_ids], grid.y[dirichlet_ids], color=:red)
+    CairoMakie.scatter!(
+        grid.x[dirichlet_ids], grid.y[dirichlet_ids],
+        color=:red, markersize=markersize, strokewidth=strokewidth
+    )
     neumann_ids = grid.num_dirichlet_vertices+1:grid.num_dirichlet_vertices+grid.num_neumann_vertices
-    CairoMakie.scatter!(grid.x[neumann_ids], grid.y[neumann_ids], color=:green)
+    CairoMakie.scatter!(
+        grid.x[neumann_ids], grid.y[neumann_ids],
+        color=:green, markersize=markersize, strokewidth=strokewidth
+    )
 
     fig
 end
 
 function plot(triangulation::Vector{Triangle})
-    plot_width = 1000
+    num_horizontal_pixels = 1000
     strokewidth = 1
     padding_perc = 0.5
 
@@ -334,8 +340,8 @@ function plot(triangulation::Vector{Triangle})
     width = max_x - min_x
     height = max_y - min_y
     aspect = width / height
-    plot_height = plot_width / aspect
-    fig = CairoMakie.Figure(resolution=(plot_width, plot_height))
+    plot_height = num_horizontal_pixels / aspect
+    fig = CairoMakie.Figure(resolution=(num_horizontal_pixels, plot_height))
     horizontal_padding = padding_perc / 100 * width
     vertical_padding = padding_perc / 100 * height
     ax = CairoMakie.Axis(

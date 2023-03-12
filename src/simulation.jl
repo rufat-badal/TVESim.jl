@@ -82,9 +82,9 @@ mutable struct Simulation
     mechanical_step::MechanicalStep
     thermal_step::ThermalStep
     steps::Vector{SimulationStep}
-    x_range::Tuple{Float64, Float64}
-    y_range::Tuple{Float64, Float64}
-    θ_range::Tuple{Float64, Float64}
+    x_range::Tuple{Float64,Float64}
+    y_range::Tuple{Float64,Float64}
+    θ_range::Tuple{Float64,Float64}
 
     function Simulation(
         grid,
@@ -494,9 +494,8 @@ function simulate!(simulation::Simulation, num_steps=1)
 end
 
 function plot(simulation::Simulation, i::Int; show_edges=false)
-    plot_width = 1000
-    strokewidth = 1
-    padding_perc = 0.5
+    num_horizontal_pixels = 2500
+    strokewidth = 1 / 1000 * num_horizontal_pixels
 
     step = simulation.steps[i]
     x, y = step.x, step.y
@@ -516,15 +515,18 @@ function plot(simulation::Simulation, i::Int; show_edges=false)
     width = max_x - min_x
     height = max_y - min_y
     aspect = width / height
-    plot_height = plot_width / aspect
-    fig = CairoMakie.Figure(resolution=(plot_width, plot_height))
-    horizontal_padding = padding_perc / 100 * width
-    vertical_padding = padding_perc / 100 * height
+    plot_height = num_horizontal_pixels / aspect
+    fig = CairoMakie.Figure(resolution=(num_horizontal_pixels, plot_height))
+    padding = 0
+    if show_edges
+        length_pixel = width / num_horizontal_pixels
+        padding = strokewidth / 2 * length_pixel
+    end
     ax = CairoMakie.Axis(
         fig[1, 1],
         limits=(
-            min_x - horizontal_padding, max_x + vertical_padding,
-            min_y - horizontal_padding, max_y + horizontal_padding),
+            min_x - padding, max_x + padding,
+            min_y - padding, max_y + padding),
         aspect=aspect)
     CairoMakie.hidedecorations!(ax)
     CairoMakie.hidespines!(ax)
