@@ -523,10 +523,14 @@ function plot!(
     show_edges,
     strokewidth
 )
-    # handle tiny temperature ranges
-    min_θ, max_θ = θ_range
-    if max_θ ≈ min_θ
-        θ_range = (0, max_θ)
+    # ignore min_temp
+    min_temp, max_temp = θ_range
+    if max_temp ≈ 0
+        # handle tiny temperatures
+        θ_range = (0, 1)
+    else
+        # we implicitely assume that temp is nonnegative
+        θ_range = (0, max_temp)
     end
 
     # TODO: generate this in the grid object
