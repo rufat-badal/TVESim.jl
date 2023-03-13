@@ -1,6 +1,4 @@
-function austenite_percentage(θ)
-    return 1 - 1 / (1 + θ)
-end
+austenite_percentage(θ) = 1 - 1 / (1 + θ)
 
 dissipation_potential(dot_C::Matrix{JuMPExpression}) = norm_sqr(dot_C) / 2
 

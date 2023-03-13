@@ -9,6 +9,8 @@ struct MechanicalStep
     prev_x::Vector{JuMP.NonlinearParameter}
     prev_y::Vector{JuMP.NonlinearParameter}
     prev_θ::Vector{JuMP.NonlinearParameter}
+    dirichlet_x::Vector{JuMP.NonlinearParameter}
+    dirichlet_y::Vector{JuMP.NonlinearParameter}
     x::Vector{JuMP.VariableRef}
     y::Vector{JuMP.VariableRef}
 end
@@ -18,9 +20,12 @@ function MechanicalStep(grid::SimulationGrid, search_rad::Number)
 
     # previous steps
     num_vertices = grid.num_vertices
+    num_dirichlet_vertices = grid.num_dirichlet_vertices
     JuMP.@NLparameter(m, prev_x[i=1:num_vertices] == grid.x[i])
     JuMP.@NLparameter(m, prev_y[i=1:num_vertices] == grid.y[i])
     JuMP.@NLparameter(m, prev_θ[i=1:num_vertices] == grid.θ[i])
+    JuMP.@NLparameter(m, dirichlet_x[i=1:num_dirichlet_vertices] == JuMP.value(prev_x[i]))
+    JuMP.@NLparameter(m, dirichlet_y[i=1:num_dirichlet_vertices] == JuMP.value(prev_y[i]))
 
     # variables
     JuMP.@variable(
@@ -28,15 +33,15 @@ function MechanicalStep(grid::SimulationGrid, search_rad::Number)
         JuMP.value(prev_x[i]) - search_rad <= x[i=1:num_vertices] <= JuMP.value(prev_x[i]) + search_rad,
         start = JuMP.value(prev_x[i])
     )
-    JuMP.@constraint(m, fix_x[i=1:grid.num_dirichlet_vertices], x[i] == grid.x[i])
+    JuMP.@NLconstraint(m, fix_x[i=1:grid.num_dirichlet_vertices], x[i] == dirichlet_x[i])
     JuMP.@variable(
         m,
         JuMP.value(prev_y[i]) - search_rad <= y[i=1:num_vertices] <= JuMP.value(prev_y[i]) + search_rad,
         start = JuMP.value(prev_y[i])
     )
-    JuMP.@constraint(m, fix_y[i=1:grid.num_dirichlet_vertices], y[i] == grid.y[i])
+    JuMP.@NLconstraint(m, fix_y[i=1:grid.num_dirichlet_vertices], y[i] == dirichlet_y[i])
 
-    MechanicalStep(m, prev_x, prev_y, prev_θ, x, y)
+    MechanicalStep(m, prev_x, prev_y, prev_θ, dirichlet_x, dirichlet_y, x, y)
 end
 
 struct ThermalStep
@@ -70,6 +75,7 @@ end
 
 mutable struct Simulation
     grid::SimulationGrid
+    dirichlet_boundary_value::Function
     deformation_search_radius::Number
     temperature_search_radius::Number
     shape_memory_scaling::Number
@@ -88,6 +94,7 @@ mutable struct Simulation
 
     function Simulation(
         grid,
+        dirichlet_boundary_value,
         deformation_search_radius,
         temperature_search_radius,
         shape_memory_scaling,
@@ -103,6 +110,7 @@ mutable struct Simulation
     )
         new(
             grid,
+            dirichlet_boundary_value,
             deformation_search_radius,
             temperature_search_radius,
             shape_memory_scaling,
@@ -129,6 +137,7 @@ get_initial_range(step1, step2) = (
 
 function Simulation(
     grid::SimulationGrid;
+    dirichlet_boundary_value=(x, y, t) -> (x, y),
     shape_memory_scaling=1.5,
     initial_temperature=0,
     fps=30,
@@ -164,6 +173,7 @@ function Simulation(
 
     Simulation(
         grid,
+        dirichlet_boundary_value,
         deformation_search_radius,
         temperature_search_radius,
         shape_memory_scaling,
@@ -200,10 +210,13 @@ function create_objective!(
     scaling_matrix = [1/shape_memory_scaling 0; 0 1]
     scaled_strains = [F * scaling_matrix for F in strains]
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
+    martensite_percentage(θ) = 1 - austenite_percentage(θ)
+    JuMP.register(m, :martensite_percentage, 1, martensite_percentage; autodiff=true)
     elastic_energy = add_nonlinear_expression(0.5 * sum(
-        a_perc * neo_hook(F) + (1 - a_perc) * neo_hook(F_scaled)
-        for (a_perc, F, F_scaled) in zip(
+        a_perc * neo_hook(F) + m_perc * neo_hook(F_scaled)
+        for (a_perc, m_perc, F, F_scaled) in zip(
             integral(austenite_percentage, prev_θ, grid, m),
+            integral(martensite_percentage, prev_θ, grid, m),
             strains,
             scaled_strains
         )
@@ -439,6 +452,14 @@ function update_mechanical_step!(simulation::Simulation)
     JuMP.set_value.(mechanical_step.prev_θ, JuMP.value.(thermal_step.θ))
     JuMP.set_value.(mechanical_step.prev_x, JuMP.value.(mechanical_step.x))
     JuMP.set_value.(mechanical_step.prev_y, JuMP.value.(mechanical_step.y))
+    cur_time_step = length(simulation.steps) + 1
+    for i in 1:simulation.grid.num_dirichlet_vertices
+        new_x, new_y = simulation.dirichlet_boundary_value(
+            simulation.grid.x[i], simulation.grid.y[i], cur_time_step / simulation.fps
+        )
+        JuMP.set_value(mechanical_step.dirichlet_x[i], new_x)
+        JuMP.set_value(mechanical_step.dirichlet_y[i], new_y)
+    end
 end
 
 function update_thermal_step!(simulation::Simulation)
@@ -493,7 +514,7 @@ function simulate!(simulation::Simulation, num_steps=1)
     end
 end
 
-function plot(
+function plot!(
     fig::Makie.Figure,
     ax::Makie.Axis,
     step::SimulationStep,
@@ -543,7 +564,7 @@ function plot(simulation::Simulation, i::Int; show_edges=false)
 
     fig, ax = get_figure(simulation, num_horizontal_pixels, show_edges ? strokewidth : 0)
 
-    plot(fig, ax, simulation.steps[i], simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
+    plot!(fig, ax, simulation.steps[i], simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
 end
 
 function get_figure(simulation::Simulation, num_horizontal_pixels, strokewidth)
@@ -580,7 +601,7 @@ function save(simulation::Simulation, folder; show_edges=false, movie=false)
         for i in ProgressBars.ProgressBar(1:length(simulation.steps))
             CairoMakie.save(
                 "$folder/step_$i.png",
-                plot(fig, ax, simulation.steps[i], simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
+                plot!(fig, ax, simulation.steps[i], simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
             )
         end
     else
@@ -590,7 +611,7 @@ function save(simulation::Simulation, folder; show_edges=false, movie=false)
             fig, "$folder/movie.mp4", ProgressBars.ProgressBar(simulation.steps); framerate=fps
         ) do step
             CairoMakie.empty!(ax)
-            plot(fig, ax, step, simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
+            plot!(fig, ax, step, simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
         end
     end
 end
