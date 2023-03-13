@@ -283,16 +283,28 @@ function create_objective!(
     ]
 
     dissipation_rate(dot_C) = 2 * dissipation_potential(dot_C)
-    heat_creation_consumption = add_nonlinear_expression(
+    # heat_creation_consumption = add_nonlinear_expression(
+    #     -sum(
+    #         adiab + d_rate * temp
+    #         for (adiab, d_rate, temp) in zip(
+    #             adiabatic_terms,
+    #             dissipation_rate.(symmetrized_strain_rates),
+    #             integral(θ, grid, m),
+    #         )
+    #     )
+    # )
+
+    heat_creation = add_nonlinear_expression(
         -sum(
-            adiab + d_rate * temp
-            for (adiab, d_rate, temp) in zip(
+            d_rate * temp
+            for (d_rate, temp) in zip(
                 adiabatic_terms,
                 dissipation_rate.(symmetrized_strain_rates),
                 integral(θ, grid, m),
             )
         )
     )
+    
 
     # dissipation
     JuMP.register(m, :internal_energy_weight, 1, internal_energy_weight; autodiff=true)
@@ -335,7 +347,8 @@ function create_objective!(
         m, Min,
         boundary_heat_transfer
         + heat_diffusion
-        + heat_creation_consumption
+        # + heat_creation_consumption
+        + 3000 * heat_creation
         + fps * dissipation
     )
 end

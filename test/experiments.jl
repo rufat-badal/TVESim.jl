@@ -83,12 +83,39 @@ function cooling_circle_experiment()
     simulate!(simulation, num_steps - 2)
     save(grid, simulation.θ_range, experiments_folder, show_edges=true)
     save(simulation, experiments_folder, show_edges=true)
+    return
+end
+
+function rotating_circle_experiment()
+    rotation_time = 1
+    experiments_folder = setup_experiment_folder("rotating_circle")
+    initial_temperature = 5
+    radius = 5
+    num_boundary_points = 30
+    isdirichlet(x, y) = true
+    function dirichlet_boundary_value(x, y, t)
+        angle = 2 * π * t / rotation_time
+        c = cos(angle)
+        s = sin(angle)
+        c * x - s * y, s * x + c * y
+    end
+    grid = SimulationGrid(TVESim.circle_boundary_points(radius, num_boundary_points), initial_temperature, isdirichlet)
+    simulation = Simulation(
+        grid,
+        dirichlet_boundary_value=dirichlet_boundary_value,
+        fps=30,
+        heat_transfer_coefficient=0
+    )
+    num_steps = 30
+    simulate!(simulation, num_steps - 2)
+    save(grid, simulation.θ_range, experiments_folder, show_edges=true)
+    save(simulation, experiments_folder, show_edges=true)
     return simulation.θ_range
 end
 
 # square_experiment()
 # cooling_square_experiment()
 # circle_experiment()
-cooling_circle_experiment()
+# cooling_circle_experiment()
 # square_movie_experiment()
-# rotating_circle_experiment()
+rotating_circle_experiment()
