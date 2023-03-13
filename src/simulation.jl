@@ -524,13 +524,9 @@ function plot!(
     strokewidth
 )
     # ignore min_temp
-    min_temp, max_temp = θ_range
-    if max_temp ≈ 0
-        # handle tiny temperatures
+    min_θ, max_θ = θ_range
+    if min_θ ≈ max_θ
         θ_range = (0, 1)
-    else
-        # we implicitely assume that temp is nonnegative
-        θ_range = (0, max_temp)
     end
 
     # TODO: generate this in the grid object
@@ -568,13 +564,21 @@ function plot!(
     fig
 end
 
-function plot(simulation::Simulation, i::Int; show_edges=false)
+function plot(simulation::Simulation, i::Int; show_edges=false, temp_range=undef)
     num_horizontal_pixels = 2500
     strokewidth = 1 / 1000 * num_horizontal_pixels
 
     fig, ax = get_figure(simulation, num_horizontal_pixels, show_edges ? strokewidth : 0)
 
-    plot!(fig, ax, simulation.steps[i], simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
+    plot!(
+        fig,
+        ax,
+        simulation.steps[i],
+        temp_range == undef ? simulation.θ_range : temp_range,
+        simulation.grid.triangles,
+        show_edges,
+        strokewidth
+    )
 end
 
 function get_figure(simulation::Simulation, num_horizontal_pixels, strokewidth)
@@ -602,7 +606,7 @@ function get_figure(simulation::Simulation, num_horizontal_pixels, strokewidth)
     fig, ax
 end
 
-function save(simulation::Simulation, folder; show_edges=false, movie=false)
+function save(simulation::Simulation, folder; show_edges=false, movie=false, temp_range=undef)
     num_horizontal_pixels = 2500
     strokewidth = 1 / 1000 * num_horizontal_pixels
 
@@ -611,7 +615,15 @@ function save(simulation::Simulation, folder; show_edges=false, movie=false)
         for i in ProgressBars.ProgressBar(1:length(simulation.steps))
             CairoMakie.save(
                 "$folder/step_$i.png",
-                plot!(fig, ax, simulation.steps[i], simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
+                plot!(
+                    fig,
+                    ax,
+                    simulation.steps[i],
+                    temp_range == undef ? simulation.θ_range : temp_range,
+                    simulation.grid.triangles,
+                    show_edges,
+                    strokewidth
+                )
             )
         end
     else
@@ -621,7 +633,15 @@ function save(simulation::Simulation, folder; show_edges=false, movie=false)
             fig, "$folder/movie.mp4", ProgressBars.ProgressBar(simulation.steps); framerate=fps
         ) do step
             CairoMakie.empty!(ax)
-            plot!(fig, ax, step, simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
+            plot!(
+                fig,
+                ax,
+                simulation.steps[i],
+                temp_range == undef ? simulation.θ_range : temp_range,
+                simulation.grid.triangles,
+                show_edges,
+                strokewidth
+            )
         end
     end
 end

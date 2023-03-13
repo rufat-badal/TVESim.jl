@@ -72,13 +72,13 @@ end
 
 function cooling_circle_experiment()
     experiments_folder = setup_experiment_folder("cooling_circle")
-    initial_temperature = 20
+    initial_temperature = 10
     radius = 5
     num_boundary_points = 30
     dirichlet_arc_angle = 45
     isdirichlet(x, y) = x <= -radius * cos(dirichlet_arc_angle / 360 * 2pi)
     grid = SimulationGrid(TVESim.circle_boundary_points(radius, num_boundary_points), initial_temperature, isdirichlet)
-    simulation = Simulation(grid, fps=1, heat_transfer_coefficient=2)
+    simulation = Simulation(grid, fps=1, heat_transfer_coefficient=4)
     num_steps = 80
     simulate!(simulation, num_steps - 2)
     save(grid, simulation.θ_range, experiments_folder, show_edges=true)

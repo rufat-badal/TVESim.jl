@@ -264,12 +264,10 @@ function update_vertex_type(v::Vertex, containing_triangle_isinternal::Bool)
 end
 
 function plot(grid::SimulationGrid, temp_range; show_edges=false)
-    # ignore min_temp
+    # handle tiny temperature ranges
     min_temp, max_temp = temp_range
-    if max_temp ≈ 0
+    if min_temp ≈ max_temp
         temp_range = (0, 1)
-    else
-        temp_range = (0, max_temp)
     end
 
     num_horizontal_pixels = 2500 # in pixels!
