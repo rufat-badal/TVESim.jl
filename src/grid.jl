@@ -264,6 +264,12 @@ function update_vertex_type(v::Vertex, containing_triangle_isinternal::Bool)
 end
 
 function plot(grid::SimulationGrid, temp_range; show_edges=false)
+    # handle tiny temperature ranges
+    min_θ, max_θ = temp_range
+    if max_θ ≈ min_θ
+        temp_range = (0, max_θ)
+    end
+
     num_horizontal_pixels = 2500 # in pixels!
     strokewidth = 2.5 / 1000 * num_horizontal_pixels
     markersize = 2 / 100 * num_horizontal_pixels

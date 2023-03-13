@@ -523,6 +523,12 @@ function plot!(
     show_edges,
     strokewidth
 )
+    # handle tiny temperature ranges
+    min_θ, max_θ = θ_range
+    if max_θ ≈ min_θ
+        θ_range = (0, max_θ)
+    end
+
     # TODO: generate this in the grid object
     faces = Matrix{Int}(undef, length(triangles), 3)
     for (i, T) in enumerate(triangles)
