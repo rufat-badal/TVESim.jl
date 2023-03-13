@@ -493,10 +493,15 @@ function simulate!(simulation::Simulation, num_steps=1)
     end
 end
 
-function plot(fig::Makie.Figure, ax::Makie.Axis, simulation::Simulation, i::Int, show_edges, strokewidth)
-    step = simulation.steps[i]
-    x, y = step.x, step.y
-    triangles = simulation.grid.triangles
+function plot(
+    fig::Makie.Figure,
+    ax::Makie.Axis,
+    step::SimulationStep,
+    θ_range,
+    triangles,
+    show_edges,
+    strokewidth
+)
     # TODO: generate this in the grid object
     faces = Matrix{Int}(undef, length(triangles), 3)
     for (i, T) in enumerate(triangles)
@@ -504,7 +509,7 @@ function plot(fig::Makie.Figure, ax::Makie.Axis, simulation::Simulation, i::Int,
             faces[i, j] = v
         end
     end
-    vertices = [x y]
+    vertices = [step.x step.y]
 
     CairoMakie.empty!(ax)
     if show_edges
@@ -514,7 +519,7 @@ function plot(fig::Makie.Figure, ax::Makie.Axis, simulation::Simulation, i::Int,
             faces,
             color=step.θ,
             colormap=:plasma,
-            colorrange=simulation.θ_range,
+            colorrange=θ_range,
             strokewidth=strokewidth,
             shading=true
         )
@@ -525,7 +530,7 @@ function plot(fig::Makie.Figure, ax::Makie.Axis, simulation::Simulation, i::Int,
             faces,
             color=step.θ,
             colormap=:plasma,
-            colorrange=simulation.θ_range
+            colorrange=θ_range
         )
     end
 
@@ -538,7 +543,7 @@ function plot(simulation::Simulation, i::Int; show_edges=false)
 
     fig, ax = get_figure(simulation, num_horizontal_pixels, show_edges ? strokewidth : 0)
 
-    plot(fig, ax, simulation, i, show_edges, strokewidth)
+    plot(fig, ax, simulation.steps[i], simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
 end
 
 function get_figure(simulation::Simulation, num_horizontal_pixels, strokewidth)
@@ -566,12 +571,26 @@ function get_figure(simulation::Simulation, num_horizontal_pixels, strokewidth)
     fig, ax
 end
 
-function save(simulation::Simulation, folder; show_edges=false)
+function save(simulation::Simulation, folder; show_edges=false, movie=false)
     num_horizontal_pixels = 2500
     strokewidth = 1 / 1000 * num_horizontal_pixels
-    fig, ax = get_figure(simulation, num_horizontal_pixels, show_edges ? strokewidth : 0)
 
-    for i in ProgressBars.ProgressBar(1:length(simulation.steps))
-        CairoMakie.save("$folder/step_$i.png", plot(fig, ax, simulation, i, show_edges, strokewidth))
+    if !movie
+        fig, ax = get_figure(simulation, num_horizontal_pixels, show_edges ? strokewidth : 0)
+        for i in ProgressBars.ProgressBar(1:length(simulation.steps))
+            CairoMakie.save(
+                "$folder/step_$i.png",
+                plot(fig, ax, simulation.steps[i], simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
+            )
+        end
+    else
+        fig, ax = get_figure(simulation, num_horizontal_pixels, show_edges ? strokewidth : 0)
+        fps = 15
+        CairoMakie.record(
+            fig, "$folder/movie.mp4", ProgressBars.ProgressBar(simulation.steps); framerate=fps
+        ) do step
+            CairoMakie.empty!(ax)
+            plot(fig, ax, step, simulation.θ_range, simulation.grid.triangles, show_edges, strokewidth)
+        end
     end
 end
