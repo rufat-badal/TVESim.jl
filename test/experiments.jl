@@ -93,7 +93,7 @@ function rotating_circle_experiment()
     radius = 5
     num_boundary_points = 30
     isdirichlet(x, y) = true
-    function dirichlet_boundary_value(x, y, t)
+    function boundary_rotation(x, y, t)
         angle = 2 * π * t / rotation_time
         c = cos(angle)
         s = sin(angle)
@@ -102,7 +102,7 @@ function rotating_circle_experiment()
     grid = SimulationGrid(TVESim.circle_boundary_points(radius, num_boundary_points), initial_temperature, isdirichlet)
     simulation = Simulation(
         grid,
-        dirichlet_boundary_value=dirichlet_boundary_value,
+        dirichlet_func=boundary_rotation,
         fps=30,
         heat_transfer_coefficient=0
     )

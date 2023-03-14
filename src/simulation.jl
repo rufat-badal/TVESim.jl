@@ -15,7 +15,7 @@ struct MechanicalStep
     y::Vector{JuMP.VariableRef}
 end
 
-function MechanicalStep(grid::SimulationGrid, search_rad::Number)
+function MechanicalStep(grid::SimulationGrid, search_rad::Number, initial_dirichlet_x, initial_dirichlet_y)
     m = JuMP.Model(() -> MadNLP.Optimizer(print_level=MadNLP.WARN, blas_num_threads=8))
 
     # previous steps
@@ -24,8 +24,8 @@ function MechanicalStep(grid::SimulationGrid, search_rad::Number)
     JuMP.@NLparameter(m, prev_x[i=1:num_vertices] == grid.x[i])
     JuMP.@NLparameter(m, prev_y[i=1:num_vertices] == grid.y[i])
     JuMP.@NLparameter(m, prev_θ[i=1:num_vertices] == grid.θ[i])
-    JuMP.@NLparameter(m, dirichlet_x[i=1:num_dirichlet_vertices] == JuMP.value(prev_x[i]))
-    JuMP.@NLparameter(m, dirichlet_y[i=1:num_dirichlet_vertices] == JuMP.value(prev_y[i]))
+    JuMP.@NLparameter(m, dirichlet_x[i=1:num_dirichlet_vertices] == initial_dirichlet_x[i])
+    JuMP.@NLparameter(m, dirichlet_y[i=1:num_dirichlet_vertices] == initial_dirichlet_y[i])
 
     # variables
     JuMP.@variable(
@@ -75,7 +75,7 @@ end
 
 mutable struct Simulation
     grid::SimulationGrid
-    dirichlet_boundary_value::Function
+    dirichlet_func::Function
     deformation_search_radius::Number
     temperature_search_radius::Number
     shape_memory_scaling::Number
@@ -94,7 +94,7 @@ mutable struct Simulation
 
     function Simulation(
         grid,
-        dirichlet_boundary_value,
+        dirichlet_func,
         deformation_search_radius,
         temperature_search_radius,
         shape_memory_scaling,
@@ -110,7 +110,7 @@ mutable struct Simulation
     )
         new(
             grid,
-            dirichlet_boundary_value,
+            dirichlet_func,
             deformation_search_radius,
             temperature_search_radius,
             shape_memory_scaling,
@@ -135,9 +135,22 @@ get_initial_range(step1, step2) = (
     max(maximum(step1), maximum(step2))
 )
 
+function get_dirichlet_vectors(dirichlet_func, x0, y0,  t)
+    num_dirichlet_vertices = length(x0)
+    x_res = Vector{Float64}(undef, num_dirichlet_vertices)
+    y_res = Vector{Float64}(undef, num_dirichlet_vertices)
+    for (i, (x, y)) in enumerate(zip(x0, y0))
+        new_x, new_y = dirichlet_func(x, y, t)
+        x_res[i] = new_x
+        y_res[i] = new_y
+    end
+
+    x_res, y_res
+end
+
 function Simulation(
     grid::SimulationGrid;
-    dirichlet_boundary_value=(x, y, t) -> (x, y),
+    dirichlet_func=(x, y, t) -> (x, y),
     shape_memory_scaling=1.5,
     initial_temperature=0,
     fps=30,
@@ -150,7 +163,13 @@ function Simulation(
     height = maximum(grid.y) - minimum(grid.y)
     deformation_search_radius = 1.1 * shape_memory_scaling * max(width, height)
 
-    mechanical_step = MechanicalStep(grid, deformation_search_radius)
+    initial_dirichlet_x, initial_dirichlet_y = get_dirichlet_vectors(
+        dirichlet_func,
+        grid.x[grid.dirichlet_vertices],
+        grid.y[grid.dirichlet_vertices],
+        1/fps
+    )
+    mechanical_step = MechanicalStep(grid, deformation_search_radius, initial_dirichlet_x, initial_dirichlet_y)
     x = JuMP.value.(mechanical_step.prev_x)
     y = JuMP.value.(mechanical_step.prev_y)
     θ = JuMP.value.(mechanical_step.prev_θ)
@@ -161,8 +180,16 @@ function Simulation(
     temperature_search_radius = initial_temperature + 10
     thermal_step = ThermalStep(grid, mechanical_step, temperature_search_radius)
     create_objective!(
-        thermal_step, grid, shape_memory_scaling,
-        heat_transfer_coefficient, heat_conductivity, entropic_heat_capacity, external_temperature, fps
+        thermal_step,
+        grid,
+        shape_memory_scaling,
+        heat_transfer_coefficient,
+        heat_conductivity,
+        entropic_heat_capacity,
+        external_temperature,
+        fps;
+        # only_heat_creation=true,
+        simple_dissipation=true
     )
     JuMP.optimize!(thermal_step.model)
 
@@ -173,7 +200,7 @@ function Simulation(
 
     Simulation(
         grid,
-        dirichlet_boundary_value,
+        dirichlet_func,
         deformation_search_radius,
         temperature_search_radius,
         shape_memory_scaling,
@@ -233,7 +260,9 @@ function create_objective!(
     heat_conductivity,
     entropic_heat_capacity,
     external_temperature,
-    fps
+    fps;
+    only_heat_creation=false,
+    simple_dissipation=false
 )
     m = thermal_step.model
     prev_x = thermal_step.prev_x
@@ -265,90 +294,100 @@ function create_objective!(
         )
     )
 
-    # heat sources and sinks
     scaling_matrix = [1/shape_memory_scaling 0; 0 1]
     JuMP.register(m, :austenite_percentage, 1, austenite_percentage; autodiff=true)
     JuMP.register(m, :identity, 1, identity; autodiff=true)
-    adiabatic_terms = [
-        dot(
-            a_perc_term * (
-                gradient_austenite_potential(prev_F) - gradient_martensite_potential(prev_F, scaling_matrix)
-            ), dot_F
-        )
-        for (a_perc_term, prev_F, dot_F) in zip(
-            scalar_product(austenite_percentage, prev_θ, θ, grid, m),
-            prev_strains,
-            strain_rates
-        )
-    ]
+    # heat sources and sinks
+    if !only_heat_creation
+        adiabatic_terms = [
+            dot(
+                a_perc_term * (
+                    gradient_austenite_potential(prev_F) - gradient_martensite_potential(prev_F, scaling_matrix)
+                ), dot_F
+            )
+            for (a_perc_term, prev_F, dot_F) in zip(
+                scalar_product(austenite_percentage, prev_θ, θ, grid, m),
+                prev_strains,
+                strain_rates
+            )
+        ]
+    end
 
     dissipation_rate(dot_C) = 2 * dissipation_potential(dot_C)
-    # heat_creation_consumption = add_nonlinear_expression(
-    #     -sum(
-    #         adiab + d_rate * temp
-    #         for (adiab, d_rate, temp) in zip(
-    #             adiabatic_terms,
-    #             dissipation_rate.(symmetrized_strain_rates),
-    #             integral(θ, grid, m),
-    #         )
-    #     )
-    # )
-
-    heat_creation = add_nonlinear_expression(
-        -sum(
-            d_rate * temp
-            for (d_rate, temp) in zip(
-                adiabatic_terms,
-                dissipation_rate.(symmetrized_strain_rates),
-                integral(θ, grid, m),
+    if !only_heat_creation
+        heat_creation_consumption = add_nonlinear_expression(
+            -sum(
+                adiab + d_rate * temp
+                for (adiab, d_rate, temp) in zip(
+                    adiabatic_terms,
+                    dissipation_rate.(symmetrized_strain_rates),
+                    integral(θ, grid, m)
+                )
             )
         )
-    )
-    
+    else
+        heat_creation_consumption = add_nonlinear_expression(
+            -sum(
+                d_rate * temp
+                for (d_rate, temp) in zip(
+                    dissipation_rate.(symmetrized_strain_rates),
+                    integral(θ, grid, m)
+                )
+            )
+        )
+    end
+
 
     # dissipation
-    JuMP.register(m, :internal_energy_weight, 1, internal_energy_weight; autodiff=true)
-    antider_prev_internal_energies = [
-        weight * (
-            austenite_potential(prev_F) - martensite_potential(prev_F, scaling_matrix)
-        ) + entropic_heat_capacity * entropy_term
-        for (weight, prev_F, entropy_term) in zip(
-            scalar_product(internal_energy_weight, prev_θ, θ, grid, m),
-            prev_strains,
-            scalar_product(prev_θ, θ, grid, m)
-        )
-    ]
+    if !simple_dissipation
+        JuMP.register(m, :internal_energy_weight, 1, internal_energy_weight; autodiff=true)
+        antider_prev_internal_energies = [
+            weight * (
+                austenite_potential(prev_F) - martensite_potential(prev_F, scaling_matrix)
+            ) + entropic_heat_capacity * entropy_term
+            for (weight, prev_F, entropy_term) in zip(
+                scalar_product(internal_energy_weight, prev_θ, θ, grid, m),
+                prev_strains,
+                scalar_product(prev_θ, θ, grid, m)
+            )
+        ]
 
-    square(x) = x^2
-    JuMP.register(m, :square, 1, square; autodiff=true)
-    JuMP.register(m, :antider_internal_energy_weight, 1, antider_internal_energy_weight; autodiff=true)
-    antider_internal_energies = [
-        antider_weight * (
-            austenite_potential(F) - martensite_potential(F, scaling_matrix)
-        ) + entropic_heat_capacity / 2 * temp_squared
-        for (antider_weight, F, temp_squared) in zip(
-            integral(antider_internal_energy_weight, θ, grid, m),
-            strains,
-            integral(square, θ, grid, m)
-        )
-    ]
+        square(x) = x^2
+        JuMP.register(m, :square, 1, square; autodiff=true)
+        JuMP.register(m, :antider_internal_energy_weight, 1, antider_internal_energy_weight; autodiff=true)
+        antider_internal_energies = [
+            antider_weight * (
+                austenite_potential(F) - martensite_potential(F, scaling_matrix)
+            ) + entropic_heat_capacity / 2 * temp_squared
+            for (antider_weight, F, temp_squared) in zip(
+                integral(antider_internal_energy_weight, θ, grid, m),
+                strains,
+                integral(square, θ, grid, m)
+            )
+        ]
 
-    dissipation = add_nonlinear_expression(
-        0.5 * sum(
-            antider_W - antider_prev_W
-            for (antider_W, antider_prev_W) in zip(
-                antider_internal_energies,
-                antider_prev_internal_energies
+        dissipation = add_nonlinear_expression(
+            0.5 * sum(
+                antider_W - antider_prev_W
+                for (antider_W, antider_prev_W) in zip(
+                    antider_internal_energies,
+                    antider_prev_internal_energies
+                )
             )
         )
-    )
+    else
+        dissipation = add_nonlinear_expression(
+            0.5 * sum(
+                (integral(θ, grid, m) - integral(prev_θ, grid, m)).^2
+            )
+        )
+    end
 
     JuMP.@NLobjective(
         m, Min,
         boundary_heat_transfer
         + heat_diffusion
-        # + heat_creation_consumption
-        + 3000 * heat_creation
+        + heat_creation_consumption
         + fps * dissipation
     )
 end
@@ -462,17 +501,19 @@ scalar_product(x, g::Function, y, grid, model::JuMP.Model) = scalar_product(iden
 function update_mechanical_step!(simulation::Simulation)
     mechanical_step = simulation.mechanical_step
     thermal_step = simulation.thermal_step
+    grid = simulation.grid
     JuMP.set_value.(mechanical_step.prev_θ, JuMP.value.(thermal_step.θ))
     JuMP.set_value.(mechanical_step.prev_x, JuMP.value.(mechanical_step.x))
     JuMP.set_value.(mechanical_step.prev_y, JuMP.value.(mechanical_step.y))
     cur_time_step = length(simulation.steps) + 1
-    for i in 1:simulation.grid.num_dirichlet_vertices
-        new_x, new_y = simulation.dirichlet_boundary_value(
-            simulation.grid.x[i], simulation.grid.y[i], cur_time_step / simulation.fps
-        )
-        JuMP.set_value(mechanical_step.dirichlet_x[i], new_x)
-        JuMP.set_value(mechanical_step.dirichlet_y[i], new_y)
-    end
+    new_dirichlet_x, new_dirichlet_y = get_dirichlet_vectors(
+        simulation.dirichlet_func,
+        grid.x[grid.dirichlet_vertices],
+        grid.y[grid.dirichlet_vertices],
+        (cur_time_step - 1) / simulation.fps
+    )
+    JuMP.set_value.(mechanical_step.dirichlet_x, new_dirichlet_x)
+    JuMP.set_value.(mechanical_step.dirichlet_y, new_dirichlet_y)
 end
 
 function update_thermal_step!(simulation::Simulation)
